@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact | Ajit Goel</title>
+    <meta name="description" content="Reach out to Ajit Goel for project help or technical consultancy.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <style>
+        .contact-content { padding-top: 140px; padding-bottom: 100px; max-width: 800px; }
+        .contact-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 3rem; border-radius: 24px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 500; font-size: 0.95rem; }
+        .form-control { width: 100%; padding: 0.8rem 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: inherit; font-size: 1rem; transition: var(--transition); }
+        .form-control:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 4px var(--accent-glow); background: rgba(15, 23, 42, 0.8); }
+        select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.5rem; padding-right: 2.5rem; }
+        textarea.form-control { min-height: 150px; resize: vertical; }
+        .submit-btn { width: 100%; margin-top: 1.5rem; }
+        .reCaptcha-container { margin: 1.5rem 0; }
+        .setup-notice { background: rgba(56, 189, 248, 0.1); border: 1px dashed var(--accent-color); padding: 1rem; border-radius: 8px; margin-bottom: 2rem; font-size: 0.9rem; color: var(--accent-color); }
+        .setup-notice code { background: rgba(255, 255, 255, 0.1); padding: 0.2rem 0.4rem; border-radius: 4px; }
+    </style>
+  <link rel="stylesheet" crossorigin href="/assets/style-e5KTsDnz.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/resume.html">Resume</a></li>
+                    <li><a href="/contact.html" class="active">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container contact-content">
+        <h1 class="section-title reveal active">Get in Touch</h1>
+        
+        <!-- Setup Instructions (Only visible to you during development) -->
+        <div class="setup-notice no-print">
+            <strong>Action Required:</strong> To enable reCAPTCHA, replace <code>YOUR_RECAPTCHA_SITE_KEY</code> in the form with your actual site key from Google reCAPTCHA. Form submissions are currently linked to <code>hellokumarajit@gmail.com</code> via Formspree.
+        </div>
+
+        <div class="contact-card reveal active">
+            <p style="color: var(--text-secondary); margin-bottom: 2.5rem; font-size: 1.1rem;">
+                Looking for technical consultancy or help with a specific project? Fill out the form below and I'll get back to you within 24-48 hours.
+            </p>
+            
+            <form action="https://formspree.io/f/hellokumarajit@gmail.com" method="POST">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="Ajit Goel" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="_replyto" class="form-control" placeholder="ajit@example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="purpose">How can I help?</label>
+                    <select id="purpose" name="purpose" class="form-control" required>
+                        <option value="" disabled selected>Select an option</option>
+                        <option value="Project Help">I need help with a Project</option>
+                        <option value="Technical Help">I need Technical Help/Consultancy</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" class="form-control" placeholder="Tell me a bit about your project or technical challenge..." required></textarea>
+                </div>
+
+                <div class="reCaptcha-container">
+                    <!-- Placeholder: Replace YOUR_RECAPTCHA_SITE_KEY with your actual site key -->
+                    <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY" data-theme="dark"></div>
+                    <noscript>
+                        <p style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem;">reCAPTCHA requires JavaScript to be enabled.</p>
+                    </noscript>
+                </div>
+                
+                <button type="submit" class="btn btn-primary submit-btn">Send Message</button>
+            </form>
+        </div>
+    </div>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Ready to solve complex problems.</p>
+        </div>
+    </footer>
+</body>
+</html>
