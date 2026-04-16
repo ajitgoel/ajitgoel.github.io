@@ -4,25 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resume | Ajit Goel</title>
+    <meta name="description" content="Resume of Ajit Goel, Senior Solution Architect specializing in AWS, Java, .NET, and Event-Driven Systems.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
     <style>
         .resume-content { padding-top: 120px; padding-bottom: 100px; }
         .resume-section { margin-bottom: 4rem; }
-        .resume-header { margin-bottom: 3rem; border-bottom: 1px solid var(--border-color); padding-bottom: 2rem; }
-        .contact-info { display: flex; gap: 2rem; color: var(--text-secondary); margin-top: 1rem; flex-wrap: wrap; }
-        .skills-category { margin-bottom: 2rem; }
-        .skills-category h4 { color: var(--accent-color); margin-bottom: 1rem; font-size: 1.1rem; }
-        .exp-item { margin-bottom: 3rem; }
+        .resume-header { margin-bottom: 3rem; border-bottom: 1px solid var(--border-color); padding-bottom: 2.5rem; }
+        .contact-info { display: flex; gap: 2rem; color: var(--text-secondary); margin-top: 1.5rem; flex-wrap: wrap; }
+        .contact-info a { color: var(--text-primary); text-decoration: none; border-bottom: 1px solid transparent; transition: var(--transition); }
+        .contact-info a:hover { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+        .skills-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .skills-category { margin-bottom: 1.5rem; background: var(--card-bg); padding: 1.8rem; border-radius: 16px; border: 1px solid var(--border-color); transition: var(--transition); }
+        .skills-category:hover { border-color: var(--accent-color); transform: translateY(-5px); }
+        .skills-category h4 { color: var(--accent-color); margin-bottom: 1.2rem; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; letter-spacing: 0.05em; text-transform: uppercase; }
+        .exp-item { margin-bottom: 4rem; position: relative; }
         .exp-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
-        .exp-location { color: var(--text-secondary); font-size: 0.9rem; }
-        .exp-tech { margin-top: 1rem; font-style: italic; color: var(--accent-color); font-size: 0.9rem; }
+        .role { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); }
+        .company { color: var(--accent-color); font-weight: 600; font-size: 1.1rem; }
+        .duration { color: var(--text-secondary); font-weight: 500; font-size: 0.9rem; }
+        .exp-location { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.2rem; }
+        .exp-tech { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+        .tech-tag { font-size: 0.75rem; color: var(--accent-color); background: rgba(56, 189, 248, 0.1); padding: 0.3rem 0.8rem; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.2); font-weight: 500; }
+        .achievement-card { background: linear-gradient(90deg, rgba(56, 189, 248, 0.08), transparent); border-left: 4px solid var(--accent-color); padding: 2rem; margin-bottom: 1.5rem; border-radius: 0 16px 16px 0; transition: var(--transition); }
+        .achievement-card:hover { transform: translateX(10px); background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), transparent); }
+        .achievement-card p { color: var(--text-secondary); line-height: 1.7; }
+        .achievement-card strong { color: var(--text-primary); font-family: 'Outfit', sans-serif; font-size: 1.1rem; display: block; margin-bottom: 0.5rem; }
+        
+        ul { padding-left: 1.2rem; margin-top: 1rem; }
+        li { margin-bottom: 0.8rem; color: var(--text-secondary); position: relative; list-style-type: none; }
+        li::before { content: "→"; position: absolute; left: -1.2rem; color: var(--accent-color); }
+
         @media print {
             header, .no-print { display: none; }
-            body { background: white; color: black; }
+            body { background: white; color: black; background-image: none; }
             .resume-content { padding: 0; }
-            .skill-tag { border: 1px solid #ccc; color: black; }
+            .container { max-width: 100%; padding: 0; }
+            .skill-tag, .tech-tag { border: 1px solid #ccc; color: black; background: transparent; }
+            .skills-category, .experience-card, .achievement-card { border: 1px solid #eee; background: transparent; page-break-inside: avoid; }
+            .section-title::after { background: black; }
+            a { color: black; text-decoration: underline; }
+            .resume-header h1 { -webkit-text-fill-color: black; background: none; }
+            li::before { content: "•"; }
         }
     </style>
   <link rel="stylesheet" crossorigin href="/assets/style-e5KTsDnz.css">
@@ -33,7 +57,8 @@
             <nav>
                 <a href="/" class="logo">AG.</a>
                 <ul class="nav-links">
-                    <li><a href="/">Back to Home</a></li>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/resume.html" class="active">Resume</a></li>
                 </ul>
             </nav>
         </div>
@@ -41,41 +66,77 @@
 
     <div class="container resume-content">
         <div class="resume-header">
-            <h1 style="font-size: 3.5rem; margin-bottom: 0.5rem;">Ajit Goel</h1>
-            <h2 style="color: var(--accent-color); font-weight: 500;">Senior Solution Architect • AWS / Java / .NET / Event-Driven Systems</h2>
+            <h1 style="font-size: 4rem; margin-bottom: 0.5rem; background: linear-gradient(to right, #fff, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.04em;">AJIT GOEL</h1>
+            <h2 style="color: var(--accent-color); font-weight: 500; font-size: 1.4rem;">Senior Solution Architect  •  AWS / Java / .NET / Event-Driven Systems</h2>
             <div class="contact-info">
-                <span>Seattle, WA</span>
-                <a href="https://linkedin.com/in/ajitgoel">linkedin.com/in/ajitgoel</a>
+                <span>Seattle, WA (Open to Remote / Hybrid)</span>
+                <a href="https://linkedin.com/in/ajitgoel" target="_blank">linkedin.com/in/ajitgoel</a>
                 <a href="mailto:hellokumarajit@gmail.com">hellokumarajit@gmail.com</a>
             </div>
         </div>
 
         <section class="resume-section">
             <h3 class="section-title">Professional Summary</h3>
-            <p style="color: var(--text-secondary); font-size: 1.1rem;">
-                Senior Solution Architect and platform engineer with 20+ years designing and delivering cloud-native, event-driven distributed systems on AWS using Java/Spring Boot and .NET Core. Architected real-time personalization engines processing 10 TB of health data for 1.8M users, high-throughput content APIs sustaining 5,700 RPS, and a $1.6B fee-billing microservices platform.
+            <p style="color: var(--text-secondary); font-size: 1.15rem; line-height: 1.8; max-width: 900px;">
+                Senior Solution Architect and platform engineer with 20+ years designing and delivering cloud-native, event-driven distributed systems on AWS using Java/Spring Boot and .NET Core. Architected real-time personalization engines processing 10 TB of health data for 1.8M users, high-throughput content APIs sustaining 5,700 RPS with dynamic throttling, and a $1.6B fee-billing microservices platform processing 44M records/month — owning end-to-end architecture, infrastructure-as-code (CDK/CloudFormation), CI/CD automation, observability, and reliability engineering. Applies AI-assisted engineering workflows (Google Antigravity, Claude Code, Kiro, OpenCode, Codex, Cursor) for architecture review, PRD authoring, issue decomposition, and test generation on production and open-source projects. Deep familiarity with event-driven architecture patterns directly applicable to Kafka-based streaming pipelines: producer/consumer design, DLQs, idempotency, backpressure, and at-least-once delivery semantics.
             </p>
         </section>
 
         <section class="resume-section">
             <h3 class="section-title">Core Competencies</h3>
-            <div class="skills-category">
-                <h4>AWS Architecture</h4>
-                <div class="skills-container">
-                    <span class="skill-tag">ECS</span><span class="skill-tag">Lambda</span><span class="skill-tag">S3</span><span class="skill-tag">DynamoDB</span><span class="skill-tag">CDK</span><span class="skill-tag">CloudFormation</span><span class="skill-tag">VPC</span><span class="skill-tag">IAM</span>
+            <div class="skills-grid">
+                <div class="skills-category">
+                    <h4>AWS Architecture</h4>
+                    <div class="skills-container">
+                        <span class="skill-tag">ECS</span><span class="skill-tag">Lambda</span><span class="skill-tag">S3</span><span class="skill-tag">DynamoDB</span><span class="skill-tag">CloudWatch</span><span class="skill-tag">CloudTrail</span><span class="skill-tag">AppConfig</span><span class="skill-tag">CloudFormation</span><span class="skill-tag">CDK (v1/v2)</span><span class="skill-tag">IAM</span><span class="skill-tag">VPC</span><span class="skill-tag">ALB/ELB</span><span class="skill-tag">EC2</span><span class="skill-tag">Auto Scaling</span><span class="skill-tag">Synthetic Canaries</span><span class="skill-tag">CodePipeline</span><span class="skill-tag">CodeBuild</span><span class="skill-tag">CodeDeploy</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h4>Event-Driven & Streaming</h4>
+                    <div class="skills-container">
+                        <span class="skill-tag">Producer/Consumer Design</span><span class="skill-tag">Topics/Partitions</span><span class="skill-tag">DLQs</span><span class="skill-tag">Idempotency</span><span class="skill-tag">Backpressure</span><span class="skill-tag">At-Least-Once Semantics</span><span class="skill-tag">Schema Evolution</span><span class="skill-tag">Streaming ETL</span><span class="skill-tag">Kafka Patterns</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h4>Backend & Microservices</h4>
+                    <div class="skills-container">
+                        <span class="skill-tag">Java Spring Boot</span><span class="skill-tag">ASP.NET Core</span><span class="skill-tag">C#</span><span class="skill-tag">EF Core</span><span class="skill-tag">gRPC</span><span class="skill-tag">REST APIs</span><span class="skill-tag">Protobuf</span><span class="skill-tag">DDD</span><span class="skill-tag">Microservices</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h4>AI-Assisted Engineering</h4>
+                    <div class="skills-container">
+                        <span class="skill-tag">Google Antigravity</span><span class="skill-tag">Claude Code</span><span class="skill-tag">Kiro</span><span class="skill-tag">OpenCode</span><span class="skill-tag">Cursor</span><span class="skill-tag">PRD Authoring</span><span class="skill-tag">Issue Decomposition</span><span class="skill-tag">Test Generation</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h4>Reliability & Performance</h4>
+                    <div class="skills-container">
+                        <span class="skill-tag">Throttling</span><span class="skill-tag">Autoscaling</span><span class="skill-tag">Caching</span><span class="skill-tag">Backoff</span><span class="skill-tag">Batching</span><span class="skill-tag">Pagination</span><span class="skill-tag">Query Optimization</span><span class="skill-tag">Profiling (dotTrace)</span><span class="skill-tag">SLO Instrumentation</span>
+                    </div>
+                </div>
+                <div class="skills-category">
+                    <h4>Security & Compliance</h4>
+                    <div class="skills-container">
+                        <span class="skill-tag">IAM</span><span class="skill-tag">VPC Segmentation</span><span class="skill-tag">CloudTrail</span><span class="skill-tag">PII Handling</span><span class="skill-tag">HIPAA Alignment</span><span class="skill-tag">Financial Environments</span>
+                    </div>
                 </div>
             </div>
-            <div class="skills-category">
-                <h4>Backend & Patterns</h4>
-                <div class="skills-container">
-                    <span class="skill-tag">Java Spring Boot</span><span class="skill-tag">ASP.NET Core</span><span class="skill-tag">Event-Driven Architecture</span><span class="skill-tag">Microservices</span><span class="skill-tag">DDD</span><span class="skill-tag">gRPC</span>
-                </div>
+        </section>
+
+        <section class="resume-section">
+            <h3 class="section-title">Selected Achievements</h3>
+            <div class="achievement-card">
+                <strong>Personalization platform at scale</strong>
+                <p>Architected a real-time health recommendation engine processing 10 TB of data for 1.8M users at Safeway, enabling product-owner-controlled configuration releases with zero code deployments. Replaced third-party goals engine with internal Java SpEL platform, eliminating license costs.</p>
             </div>
-            <div class="skills-category">
-                <h4>AI-Assisted Engineering</h4>
-                <div class="skills-container">
-                    <span class="skill-tag">Google Antigravity</span><span class="skill-tag">Claude Code</span><span class="skill-tag">Cursor</span><span class="skill-tag">Test Generation</span><span class="skill-tag">PRD Authoring</span>
-                </div>
+            <div class="achievement-card">
+                <strong>5,700 RPS content delivery API</strong>
+                <p>Designed and owned a Java Spring Boot API on AWS ECS sustaining 5,700 requests/second at peak, with dynamic AppConfig-driven throttling, fully automated CDK v2 pipelines, and comprehensive observability stack (CloudWatch, Canaries, CloudTrail).</p>
+            </div>
+            <div class="achievement-card">
+                <strong>$1.6B revenue platform</strong>
+                <p>Led architecture of JPMorgan Chase's 8-application Fee Billing suite, processing 44M records/month via streaming-based ASP.NET Core microservices with read-through caching and idempotent batch processing.</p>
             </div>
         </section>
 
@@ -87,111 +148,170 @@
                     <h4 class="role">Senior Staff Engineer</h4>
                     <span class="duration">May 2024 – Present</span>
                 </div>
-                <div style="margin-bottom: 0.5rem;"><span class="company">Safeway (Albertsons Companies)</span> • <span class="exp-location">Seattle, WA</span></div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">Safeway (Albertsons Companies)</span> • <span class="exp-location">Seattle, WA</span>
+                </div>
                 <div class="card-content">
                     <ul>
-                        <li>Architected real-time personalization platform delivering 10 TB of tailored health recommendations to 1.8M users.</li>
-                        <li>Designed rules-based orchestration engine using Java SpEL evaluation core and React query-builder UI.</li>
-                        <li>Optimized performance bottlenecks via profiling-driven query tuning and read-through caching.</li>
+                        <li>Architected a real-time personalization platform delivering 10 TB of tailored health recommendations to 1.8M users — orchestrating health profiles, household purchase history, and dynamic homepage widget composition.</li>
+                        <li>Designed and implemented a rules-based orchestration engine using a Java SpEL evaluation core and React query-builder UI, replacing a heavyweight commercial rule engine.</li>
+                        <li>Replaced a third-party vendor goals engine with an internally owned Java SpEL platform — eliminating vendor dependency and improving system performance.</li>
+                        <li>Optimized critical performance bottlenecks: profiling-driven query tuning, connection pool sizing, read-through caching, and batching to reduce latency.</li>
+                        <li>Designed platform reliability using event-driven patterns — idempotent processing, backpressure-aware orchestration, and configuration-driven composition.</li>
                     </ul>
-                    <p class="exp-tech">Java Spring Boot, ReactJs, Java SpEL, Kafka, Azure Kubernetes, Docker, SQL Server</p>
+                    <div class="exp-tech">
+                        <span class="tech-tag">Java Spring Boot</span><span class="tech-tag">ReactJs</span><span class="tech-tag">Java SpEL</span><span class="tech-tag">Kafka</span><span class="tech-tag">Azure Kubernetes</span><span class="tech-tag">Docker</span><span class="tech-tag">SQL server</span>
+                    </div>
                 </div>
             </div>
 
             <div class="exp-item">
                 <div class="exp-header">
                     <h4 class="role">Senior Software Engineer</h4>
-                    <span class="duration">May 2022 – Apr 2024</span>
+                    <span class="duration">May 2022 – April 2024</span>
                 </div>
-                <div style="margin-bottom: 0.5rem;"><span class="company">Amazon Pharmacy</span> • <span class="exp-location">Seattle, WA</span></div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">Amazon Pharmacy</span> • <span class="exp-location">Seattle, WA</span>
+                </div>
                 <div class="card-content">
                     <ul>
-                        <li>Owned Java Spring Boot content-delivery API on AWS ECS sustaining 5,700 RPS.</li>
-                        <li>Engineered dynamic throttling and incident-response rate controls via AWS AppConfig.</li>
-                        <li>Automated end-to-end delivery pipelines using AWS CDK v2 and CodePipeline.</li>
+                        <li>Architected and owned a Java Spring Boot content-delivery API on AWS ECS + S3 sustaining 5,700 RPS at peak load.</li>
+                        <li>Engineered dynamic throttling and incident-response rate controls via AWS AppConfig — enabling live policy changes without redeployment.</li>
+                        <li>Automated end-to-end delivery pipelines (AWS CodePipeline, CodeBuild, CodeDeploy, CDK v2), eliminating manual release overhead.</li>
+                        <li>Established production observability: CloudWatch dashboards, CloudTrail audit logging, and Synthetic Canaries for 24/7 monitoring.</li>
+                        <li>Led migration of 3 high-value applications from deprecated AWS CDK v1 to CDK v2 ahead of EOL.</li>
+                        <li>Operated AWS infrastructure across ECS, Lambda, DynamoDB, S3, IAM, VPC, ELB, EC2, and Auto Scaling.</li>
                     </ul>
-                    <p class="exp-tech">Java Spring Boot, TypeScript, AWS CDK v2, ECS, Lambda, DynamoDB, AppConfig, CloudWatch</p>
+                    <div class="exp-tech">
+                        <span class="tech-tag">Java Spring Boot</span><span class="tech-tag">TypeScript</span><span class="tech-tag">AWS CDK v2</span><span class="tech-tag">ECS</span><span class="tech-tag">Lambda</span><span class="tech-tag">DynamoDB</span><span class="tech-tag">AppConfig</span><span class="tech-tag">CloudWatch</span>
+                    </div>
                 </div>
             </div>
 
             <div class="exp-item">
                 <div class="exp-header">
                     <h4 class="role">Technical Leader (Senior SWE)</h4>
-                    <span class="duration">Jun 2018 – Apr 2022</span>
+                    <span class="duration">June 2018 – April 2022</span>
                 </div>
-                <div style="margin-bottom: 0.5rem;"><span class="company">JPMorgan Chase & Co.</span> • <span class="exp-location">Plano, TX</span></div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">JPMorgan Chase & Co.</span> • <span class="exp-location">Plano, TX</span>
+                </div>
                 <div class="card-content">
                     <ul>
-                        <li>Led architecture of 8-application Fee Billing suite generating $1.6B annual revenue.</li>
-                        <li>Achieved 10% throughput improvement using streaming ingestion and single-pass EF Core patterns.</li>
-                        <li>Drove transformation to continuous delivery via Jenkins CI/CD.</li>
+                        <li>Led architecture and delivery of an 8-application Fee Billing suite processing ~44M input records/month and generating $1.6B in annual revenue.</li>
+                        <li>Designed greenfield ASP.NET Core microservices on Docker/Linux using streaming ingestion and single-pass EF Core query patterns.</li>
+                        <li>Architected a reference data microservice with a read-through IMemoryCache layer, reducing downstream billing computation latency.</li>
+                        <li>Drove platform transformation from semiannual manual releases to continuous delivery via Jenkins CI/CD.</li>
+                        <li>Enforced distributed-systems reliability: exponential-backoff retries, idempotent batch processing, and structured error handling.</li>
                     </ul>
-                    <p class="exp-tech">ASP.NET Core, C#, Entity Framework Core, Docker, Linux, Jenkins</p>
+                    <div class="exp-tech">
+                        <span class="tech-tag">ASP.NET Core</span><span class="tech-tag">C#</span><span class="tech-tag">Entity Framework Core</span><span class="tech-tag">SQL Server</span><span class="tech-tag">Docker</span><span class="tech-tag">Linux</span><span class="tech-tag">Jenkins</span>
+                    </div>
                 </div>
             </div>
 
             <div class="exp-item">
                 <div class="exp-header">
                     <h4 class="role">Technical Lead (.NET)</h4>
-                    <span class="duration">Aug 2016 – Jun 2018</span>
+                    <span class="duration">August 2016 – June 2018</span>
                 </div>
-                <div style="margin-bottom: 0.5rem;"><span class="company">Thomson Reuters</span> • <span class="exp-location">Carrollton, TX</span></div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">Thomson Reuters</span> • <span class="exp-location">Carrollton, TX</span>
+                </div>
                 <div class="card-content">
                     <ul>
-                        <li>Performance-tuned critical PII-sensitive subsystems using dotTrace profiling and T-SQL redesign.</li>
+                        <li>Promoted to AumentumTax Assessment Administration module — the platform's most architecturally complex area.</li>
+                        <li>Performance-tuned a critical PII-sensitive subsystem using dotTrace profiling and T-SQL query redesign.</li>
                         <li>Delivered production-ready features on a two-week sprint cadence with zero regression impact.</li>
                     </ul>
-                    <p class="exp-tech">ASP.NET, .NET 4.5, C#, SQL Server, JavaScript, Telerik KendoUI, dotTrace</p>
+                    <div class="exp-tech">
+                        <span class="tech-tag">ASP.NET</span><span class="tech-tag">.NET 4.5</span><span class="tech-tag">C#</span><span class="tech-tag">SQL Server</span><span class="tech-tag">T-SQL</span><span class="tech-tag">JavaScript</span><span class="tech-tag">dotTrace</span>
+                    </div>
                 </div>
             </div>
 
             <div class="exp-item">
                 <div class="exp-header">
                     <h4 class="role">.NET Technical Lead</h4>
-                    <span class="duration">Jan 2007 – Aug 2016</span>
+                    <span class="duration">January 2007 – August 2016</span>
                 </div>
-                <div style="margin-bottom: 0.5rem;"><span class="company">RealPage, Inc.</span></div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">RealPage, Inc.</span>
+                </div>
                 <div class="card-content">
                     <ul>
-                        <li>Led development of major platform modules for a large-scale multi-tenant SaaS product.</li>
-                        <li>Introduced Protobuf.NET binary serialization to replace legacy payload formats.</li>
+                        <li>Led development of major platform modules for a large-scale multi-tenant SaaS product used by property management companies nationwide.</li>
+                        <li>Introduced Protobuf.NET binary serialization to replace legacy payload formats, improving API throughput performance.</li>
                     </ul>
-                    <p class="exp-tech">ASP.NET, C#, SQL Server, JavaScript, Protobuf.NET</p>
+                    <div class="exp-tech">
+                        <span class="tech-tag">ASP.NET</span><span class="tech-tag">C#</span><span class="tech-tag">.NET</span><span class="tech-tag">SQL Server</span><span class="tech-tag">JavaScript</span><span class="tech-tag">Protobuf.NET</span>
+                    </div>
                 </div>
             </div>
 
             <div class="exp-item">
                 <div class="exp-header">
                     <h4 class="role">Senior Software Engineer</h4>
-                    <span class="duration">Aug 2000 – Mar 2003</span>
+                    <span class="duration">August 2000 – March 2003</span>
                 </div>
-                <div style="margin-bottom: 0.5rem;"><span class="company">Ebusiness Design (SourceRad)</span></div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">Ebusiness Design (SourceRad)</span>
+                </div>
                 <div class="card-content">
                     <ul>
-                        <li>Reduced Medical Transcription response time by 50% through targeted performance optimization.</li>
-                        <li>Eliminated database deadlocks through redesigned schema and query strategies.</li>
+                        <li>Reduced Medical Transcription response time by 50% through targeted performance optimization on a $10M web-based platform.</li>
+                        <li>Eliminated database deadlocks through redesigned schema and query strategies; reduced nightly claim batch runtime by 50%.</li>
                     </ul>
-                    <p class="exp-tech">ASP, VBScript, SQL Server, XML</p>
+                    <div class="exp-tech">
+                        <span class="tech-tag">ASP</span><span class="tech-tag">VBScript</span><span class="tech-tag">SQL Server</span><span class="tech-tag">XML</span>
+                    </div>
                 </div>
             </div>
         </section>
 
         <section class="resume-section">
-            <h3 class="section-title">Education & Certs</h3>
-            <div style="margin-bottom: 1rem;">
-                <h4 style="margin-bottom: 0.2rem;">Bachelor of Engineering, Computer Science</h4>
-                <p style="color: var(--text-secondary);">University of Mumbai, India</p>
+            <h3 class="section-title">Open Source</h3>
+            <div class="exp-item">
+                <div class="exp-header">
+                    <h4 class="role">FolderMind — AI Local Asset Manager</h4>
+                    <span class="duration">2024–Present</span>
+                </div>
+                <div style="margin-bottom: 0.8rem;">
+                    <span class="company">Personal Project</span> • <a href="https://github.com/ajitgoel/foldermind" target="_blank" style="color: var(--accent-color);">github.com/ajitgoel/foldermind</a>
+                </div>
+                <div class="card-content">
+                    <ul>
+                        <li>Building a privacy-first desktop application for offline, natural-language semantic search over local photos using Rust/Tauri and CLIP ONNX embeddings.</li>
+                        <li>Applying AI-assisted development (Claude Code, Google Gemini, Kiro) to drive architecture reviews, PRD authoring, and test-first discipline.</li>
+                        <li>Ensuring 100% test passing through automated Vitest and Rust unit test suites before any feature closure.</li>
+                    </ul>
+                    <div class="exp-tech">
+                        <span class="tech-tag">Rust</span><span class="tech-tag">Tauri</span><span class="tech-tag">TypeScript</span><span class="tech-tag">React</span><span class="tech-tag">SQLite FTS5</span><span class="tech-tag">CLIP ONNX</span><span class="tech-tag">Vitest</span>
+                    </div>
+                </div>
             </div>
-            <div>
-                <h4 style="margin-bottom: 0.2rem;">AWS Certified Solutions Architect – Associate</h4>
-                <p style="color: var(--text-secondary);">Issued Sept 2021 (Renewal in progress)</p>
+        </section>
+
+        <section class="resume-section">
+            <h3 class="section-title">Education & Certifications</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <div class="skills-category">
+                    <h4>Education</h4>
+                    <p><strong>Bachelor of Engineering, Computer Science</strong></p>
+                    <p style="color: var(--text-secondary);">University of Mumbai, India</p>
+                </div>
+                <div class="skills-category">
+                    <h4>Certifications</h4>
+                    <p><strong>AWS Certified Solutions Architect – Associate</strong></p>
+                    <p style="color: var(--text-secondary);">Issued: Sept 2021 (Renewal in progress)</p>
+                </div>
             </div>
         </section>
     </div>
 
     <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
         <div class="container no-print">
-            <p>&copy; 2026 Ajit Goel. This resume is web-optimized.</p>
+            <p>&copy; 2026 Ajit Goel. Built for scalability and reliability.</p>
         </div>
     </footer>
 </body>
