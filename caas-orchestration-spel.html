@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Orchestration with Java SpEL | Ajit Goel</title>
+    <meta name="description" content="Technical evaluation of dynamic orchestration engines for the Personalized Health homepage, comparing Drools and Java SpEL.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .post-container {
+            max-width: 800px;
+            margin: 120px auto 100px;
+            padding: 0 2rem;
+        }
+        
+        .post-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+        
+        .post-title {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 1rem;
+            line-height: 1.1;
+            background: linear-gradient(to right, #fff, #fb923c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .post-meta {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+        
+        .post-hero-img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 20px;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .post-content {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        
+        .post-content h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+            color: #fb923c;
+        }
+        
+        .post-content h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+        }
+        
+        .post-content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+        }
+        
+        .post-content ul, .post-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .post-content li {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .solution-comparison {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+        
+        .solution-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 4px solid #fb923c;
+        }
+        
+        .solution-item h4 {
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+            color: #fb923c;
+        }
+        
+        .solution-item .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            background: rgba(251, 146, 60, 0.1);
+            color: #fb923c;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #fb923c;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        .highlight-box {
+            background: rgba(251, 146, 60, 0.05);
+            border-left: 4px solid #fb923c;
+            padding: 2rem;
+            border-radius: 0 12px 12px 0;
+            margin: 3rem 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo" style="color: #fb923c;">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html" style="margin-right: 1rem;">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="post-container">
+        <a href="/" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24" style="fill: #fb923c;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Home
+        </a>
+
+        <article>
+            <header class="post-header reveal">
+                <h1 class="post-title">Technical Challenge & Development Orchestration: CAAS</h1>
+                <div class="post-meta">
+                    <span>April 16, 2026</span>
+                    <span>•</span>
+                    <span>9 min read</span>
+                    <span>•</span>
+                    <span>System Design</span>
+                </div>
+            </header>
+
+            <img src="orchestration-hero.png" alt="Software Orchestration Engine" class="post-hero-img reveal">
+
+            <div class="post-content reveal">
+                <p>Ensuring that the zones and their components on the personalized health homepage could be dynamically configured based on each user’s profile presented a significant architectural challenge. We needed a solution that offered high flexibility and maintainability, allowing for configuration changes without the overhead of application redeployments.</p>
+
+                <h2>The Architectural Crossroads</h2>
+                <p>We evaluated three primary paths for implementing this dynamic Content As A Service (CAAS) orchestration:</p>
+
+                <div class="solution-comparison">
+                    <div class="solution-item">
+                        <span class="badge">Option 1</span>
+                        <h4>Drools Rules Engine</h4>
+                        <p>While Drools is an incredibly powerful and flexible choice for complex business rule management, we found it introduced unnecessary complexity and significant performance overhead for our architectural requirements.</p>
+                    </div>
+                    <div class="solution-item">
+                        <span class="badge">Option 2</span>
+                        <h4>Open Source Rule Engines</h4>
+                        <p>We looked at several other engines like Easy Rules. Our findings were consistent: they were either over-engineered for our needs or lacked the specific features required for seamless integration with our health data layer.</p>
+                    </div>
+                    <div class="solution-item">
+                        <span class="badge">Option 3</span>
+                        <h4>Java-based SpEL Engine</h4>
+                        <p>Leveraging Spring Expression Language (SpEL) provided the perfect balance of flexibility and performance. By externalizing the configuration, we achieved independent updates with minimal overhead.</p>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <h4>The Verdict: SpEL with Externalized Config</h4>
+                    <p>We chose the <strong>Java-based SpEL engine</strong>. The ability to cache the evaluation results improved response times significantly, making it the most performant solution for our 1.8M user base.</p>
+                </div>
+
+                <h2>Testing and Validation</h2>
+                <p>The success of the SpEL implementation was validated through rigorous testing against three key criteria:</p>
+                <ul>
+                    <li><strong>Dynamic Updates:</strong> We verified how easily configurations could be updated without application downtime.</li>
+                    <li><strong>Performance Impact:</strong> Measured the latency of dynamic rule evaluation, ensuring it remained well within our <200ms target.</li>
+                    <li><strong>Authoring Complexity:</strong> Assessed the ease with which product owners could understand and modify externalized rules.</li>
+                </ul>
+
+                <h2>Outcome</h2>
+                <p>Development is complete. This solution empowers us to deliver a highly personalized experience while maintaining a lean, high-performance backend. By favoring simplicity and performance through SpEL, we've created a maintainable foundation for the future of Safeway's digital health platform.</p>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>
