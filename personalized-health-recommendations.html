@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Health Recommendations | Ajit Goel</title>
+    <meta name="description" content="Technical deep dive into building a real-time personalization platform delivering 9TB of health recommendations to 1.8M users.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        .post-container {
+            max-width: 800px;
+            margin: 120px auto 100px;
+            padding: 0 2rem;
+        }
+        
+        .post-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+        
+        .post-title {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 1rem;
+            line-height: 1.1;
+            background: linear-gradient(to right, #fff, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .post-meta {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+        
+        .post-hero-img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 20px;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .post-content {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        
+        .post-content h2 {
+            font-size: 2rem;
+            margin: 3rem 0 1.5rem;
+            color: var(--accent-color);
+        }
+        
+        .post-content h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+        }
+        
+        .post-content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+        }
+        
+        .post-content ul, .post-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .post-content li {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .post-content li strong {
+            color: var(--text-primary);
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            display: block;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            font-family: 'Outfit', sans-serif;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent-color);
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        .highlight-box {
+            background: rgba(56, 189, 248, 0.05);
+            border-left: 4px solid var(--accent-color);
+            padding: 2rem;
+            border-radius: 0 12px 12px 0;
+            margin: 3rem 0;
+        }
+
+        .highlight-box h4 {
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/main-BtJW01JY.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-e5KTsDnz.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html" style="margin-right: 1rem;">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="post-container">
+        <a href="/" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Home
+        </a>
+
+        <article>
+            <header class="post-header reveal">
+                <h1 class="post-title">Personalized Health Recommendations: Scaling Real-Time Intelligence</h1>
+                <div class="post-meta">
+                    <span>April 16, 2026</span>
+                    <span>•</span>
+                    <span>10 min read</span>
+                    <span>•</span>
+                    <span>Safeway Case Study</span>
+                </div>
+            </header>
+
+            <img src="/assets/health-hero-DRjVx97A.png" alt="Health Recommendations Dashboard" class="post-hero-img reveal">
+
+            <div class="post-content reveal">
+                <p>In the modern retail landscape, "one size fits all" is a relic of the past. At Safeway, we faced a formidable challenge: how to deliver hyper-personalized product and recipe recommendations that not only reflect a user’s purchase history but also their unique health profiles—all while maintaining the performance expected of a tier-1 digital experience.</p>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-value">9TB</span>
+                        <span class="stat-label">Data Processed</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">1.8M</span>
+                        <span class="stat-label">Active Users</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value">&lt;200ms</span>
+                        <span class="stat-label">Latency</span>
+                    </div>
+                </div>
+
+                <h2>The Challenge</h2>
+                <p>We needed a system capable of synthesizing vast amounts of data—chronic conditions, dietary preferences, nutrition goals, and years of household purchase history—into actionable recommendations. The solution had to be:</p>
+                <ul>
+                    <li><strong>Scalable:</strong> Support millions of concurrent users without degradation.</li>
+                    <li><strong>Flexible:</strong> Allow for rapid adjustments to ranking logic and business rules.</li>
+                    <li><strong>Fast:</strong> Recommendations needed to be ready the moment a user logged in.</li>
+                </ul>
+
+                <h2>The Architectural Crossroads</h2>
+                <p>We evaluated three primary approaches to solve this data orchestration problem:</p>
+                <ol>
+                    <li><strong>Nightly Batch Generation:</strong> Standard batch processing but struggled with data freshness and the sheer volume of permutations.</li>
+                    <li><strong>BigQuery HDL (Google Health Data Layer):</strong> Faced significant technical barriers in integrating with existing legacy systems.</li>
+                    <li><strong>Real-time Generation:</strong> Dynamically assembling recommendations at request time.</li>
+                </ol>
+
+                <div class="highlight-box">
+                    <h4>The Decision</h4>
+                    <p>Traditional nightly batch processing simply couldn't meet our performance needs for 1.8 million users. <strong>Real-time generation emerged as the only solution</strong> that could provide the responsiveness and scalability required for a modern health application.</p>
+                </div>
+
+                <h2>The Solution: Real-Time Orchestration</h2>
+                <p>Upon user login, the system captures key identifiers and triggers a real-time recommendation engine. This engine integrates:</p>
+                <ul>
+                    <li><strong>User Health Profiles:</strong> Chronic conditions (e.g., diabetes, heart health), dietary preferences (vegan, keto), and specific nutrition goals.</li>
+                    <li><strong>Household Purchase History:</strong> Analyzing patterns to ensure recommendations are relevant to actual buying habits.</li>
+                </ul>
+                <p>The system dynamically assembles and ranks recommendations for each widget, ensuring a unique and relevant experience for every user. We implemented advanced caching layers and configuration management to ensure speed and flexibility without sacrificing accuracy.</p>
+
+                <h2>Outcome and Impact</h2>
+                <p>By shifting to a real-time model, we successfully launched a highly responsive personalization platform. We now serve <strong>9 terabytes of data</strong> to over <strong>1.8 million users</strong>, delivering a personalized experience that evolves with the user.</p>
+                <p>This architecture doesn't just solve today's challenge—it provides the foundation for future innovations in AI-driven health and wellness retail.</p>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
