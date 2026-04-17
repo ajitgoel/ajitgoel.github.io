@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Improving Performance of T-SQL Statements with Encrypted Columns | Ajit Goel</title>
+    <meta name="description" content="A case study on improving the performance of T-SQL statements containing encrypted columns by using partial data indexing.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .post-container {
+            max-width: 850px;
+            margin: 0 auto 100px;
+            padding: 140px 2rem 0;
+            position: relative;
+        }
+        
+        .post-header {
+            margin-bottom: 4rem;
+            text-align: center;
+            padding: 1.5rem 0 0;
+        }
+        
+        .post-title {
+            display: block;
+            max-width: 18ch;
+            margin: 0 auto 1.5rem;
+            padding-top: 0.2em;
+            font-size: clamp(2rem, 4.4vw, 3rem);
+            line-height: 1.25;
+            color: var(--text-primary);
+            font-weight: 800;
+            overflow: visible;
+            overflow-wrap: anywhere;
+            hyphens: none;
+        }
+        
+        .post-meta {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .post-content {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        
+        .post-content h2 {
+            font-size: clamp(1.5rem, 4vw, 2.2rem);
+            margin: 4rem 0 1.5rem;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .post-content p {
+            margin-bottom: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .post-content strong {
+            color: var(--text-primary);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent-color);
+            margin-bottom: 2.5rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        /* Code Block Styling */
+        pre {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 2rem 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        code {
+            color: #e2e8f0;
+        }
+
+        /* Image Styling */
+        .post-image {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            margin: 2.5rem 0;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .solution-box {
+            background: rgba(56, 189, 248, 0.05);
+            border-left: 4px solid var(--accent-color);
+            padding: 2.5rem;
+            border-radius: 0 16px 16px 0;
+            margin: 4rem 0;
+        }
+
+        .solution-box h3 {
+            color: var(--accent-color);
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .post-container {
+                padding-top: 120px;
+            }
+
+            .post-title {
+                max-width: none;
+                padding-top: 0.12em;
+            }
+
+            .post-meta {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="post-header">
+                <h1 class="post-title">Improving Performance of T-SQL Statements with Encrypted Columns</h1>
+                <div class="post-meta">
+                    <span>March 8, 2017</span>
+                    <span>•</span>
+                    <span>6 min read</span>
+                    <span>•</span>
+                    <span>SQL Server</span>
+                </div>
+            </header>
+
+            <div class="post-content">
+                <p>
+                    Encryption at the database level is a critical tool for protecting sensitive data. A common implementation strategy is to encrypt specific columns containing sensitive information—such as credit card numbers or dates of birth. However, this security comes with a performance cost: encrypting and decrypting data is highly CPU-intensive.
+                </p>
+
+                <p>
+                    The real challenge arises when these encrypted columns are used in primary keys, JOIN conditions, or WHERE clauses. In these scenarios, the database engine often has to decrypt the entire column to perform comparisons, leading to significant latency and resource consumption.
+                </p>
+
+                <p>
+                    We encountered a major performance bottleneck in a previous project involving Social Security Numbers (SSNs). Database SELECT operations filtered by SSN were extremely slow because the engine was performing full-column decryptions for every comparison. Looking at the execution metrics below, the initial query required over 4,400 logical reads and took 302 milliseconds to complete.
+                </p>
+
+                <div class="solution-box">
+                    <h3>The Strategy: Partial Clear-Text Indexing</h3>
+                    <p>
+                        To resolve this, we implemented a hybrid approach: we stored the last four digits of the SSN in a clear-text column and created a non-clustered index on it. By first filtering the dataset using the indexed last four digits and then applying the full SSN decryption only to the resulting subset, we achieved a massive performance gain.
+                    </p>
+                </div>
+
+                <h2>Current Problem</h2>
+                <pre><code>begin
+DBCC FREEPROCCACHE;
+DBCC DROPCLEANBUFFERS;
+SET STATISTICS TIME ON;
+SET STATISTICS IO ON;
+
+declare @ssn varchar(max) = '123123123'
+with PersonalIdentifierInformationCTE as
+(
+select CONVERT (CHAR(32), DECRYPTBYKEYAUTOCERT(CERT_ID('CertificateName'), NULL, Identifier)) as Identifier
+from PersonalIdentifierInformation
+)
+select *
+from PersonalIdentifierInformationCTE where Identifier is not null
+and Identifier=@ssn
+end</code></pre>
+
+                <pre><code>DBCC execution completed. If DBCC printed error messages, contact your system administrator.
+DBCC execution completed. If DBCC printed error messages, contact your system administrator.
+SQL Server Execution Times:
+CPU time = 0 ms, elapsed time = 0 ms.
+(8 row(s) affected)
+Table 'PersonalIdentifierInformation'. Scan count 1, logical reads 4413, 
+physical reads 3, read-ahead reads 4406, lob logical reads 0, 
+lob physical reads 0, lob read-ahead reads 0.
+(1 row(s) affected)
+SQL Server Execution Times:
+CPU time = 250 ms, elapsed time = 302 ms.
+SQL Server parse and compile time:
+CPU time = 0 ms, elapsed time = 0 ms.
+SQL Server Execution Times:
+CPU time = 0 ms, elapsed time = 0 ms.</code></pre>
+
+                <img src="sql-perf-1.png" alt="Performance Statistics Before" class="post-image">
+                <img src="sql-perf-2.png" alt="Execution Plan Before" class="post-image">
+
+                <h2>Improved Solution</h2>
+                <pre><code>begin
+declare @ssn varchar(max) = '123123123'
+
+DBCC FREEPROCCACHE;
+DBCC DROPCLEANBUFFERS;
+SET STATISTICS TIME ON;
+SET STATISTICS IO ON;
+
+with PersonalIdentifierInformationCTE as 
+(
+select CONVERT (CHAR(32), DECRYPTBYKEYAUTOCERT(CERT_ID('CertificateName'), NULL, Identifier)) as Identifier, SSNLast4
+from PersonalIdentifierInformation
+)
+select *
+from PersonalIdentifierInformationCTE 
+where SSNLast4&lt;&gt; 0 and SSNLast4 = substring(@ssn, LEN(@ssn)-4+1, LEN(@ssn)) 
+and Identifier is not null
+and  Identifier=@ssn
+end</code></pre>
+
+                <pre><code>SQL Server parse and compile time: 
+   CPU time = 0 ms, elapsed time = 0 ms.
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+SQL Server parse and compile time: 
+   CPU time = 0 ms, elapsed time = 13 ms.
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+DBCC execution completed. If DBCC printed error messages, contact your system administrator.
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 2 ms.
+DBCC execution completed. If DBCC printed error messages, contact your system administrator.
+ SQL Server Execution Times:
+   CPU time = 16 ms,  elapsed time = 16 ms.
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+    (8 row(s) affected)
+Table 'PersonalIdentifierInformation'. Scan count 1, logical reads 27, 
+physical reads 10, read-ahead reads 8, lob logical reads 0, 
+lob physical reads 0, lob read-ahead reads 0.
+    (1 row(s) affected)
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 71 ms.
+SQL Server parse and compile time: 
+   CPU time = 0 ms, elapsed time = 0 ms.
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.</code></pre>
+
+                <img src="sql-perf-3.png" alt="Performance Statistics After" class="post-image">
+                <img src="sql-perf-4.png" alt="Execution Plan After" class="post-image">
+
+                <div class="solution-box" style="margin-top: 4rem;">
+                    <h3>Summary</h3>
+                    <p>
+                        By implementing this strategy, logical reads were reduced from <strong>4,413</strong> down to just <strong>27</strong>, and elapsed time dropped from <strong>302ms</strong> to <strong>71ms</strong>. This demonstrates that with clever indexing and partial data exposure, we can maintain strong encryption standards without sacrificing system performance.
+                    </p>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Use ProtoBuf.Net to improve serialization performance | Ajit Goel</title>
+    <meta name="description" content="A technical guide on improving .NET serialization performance using ProtoBuf.Net to replace slow XML serialization.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .post-container {
+            max-width: 850px;
+            margin: 0 auto 100px;
+            padding: 140px 2rem 0;
+            position: relative;
+        }
+        
+        .post-header {
+            margin-bottom: 4rem;
+            text-align: center;
+            padding: 1.5rem 0 0;
+        }
+        
+        .post-title {
+            display: block;
+            max-width: 25ch;
+            margin: 0 auto 1.5rem;
+            padding-top: 0.2em;
+            font-size: clamp(2rem, 4.4vw, 3rem);
+            line-height: 1.25;
+            color: var(--text-primary);
+            font-weight: 800;
+            overflow: visible;
+        }
+        
+        .post-meta {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .post-content {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+        
+        .post-content h2 {
+            font-size: clamp(1.5rem, 4vw, 2.2rem);
+            margin: 4rem 0 1.5rem;
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .post-content p {
+            margin-bottom: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .post-content strong {
+            color: var(--text-primary);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent-color);
+            margin-bottom: 2.5rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .back-link:hover {
+            transform: translateX(-5px);
+        }
+
+        /* Code Block Styling */
+        pre {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 2rem 0;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        code {
+            color: #e2e8f0;
+        }
+
+        /* Image Styling */
+        .post-image {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            margin: 2.5rem 0;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .highlight-box {
+            background: rgba(56, 189, 248, 0.05);
+            border-left: 4px solid var(--accent-color);
+            padding: 2.5rem;
+            border-radius: 0 16px 16px 0;
+            margin: 4rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .post-container {
+                padding-top: 120px;
+            }
+            .post-meta {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="post-header">
+                <h1 class="post-title">Use ProtoBuf.Net to improve serialization performance</h1>
+                <div class="post-meta">
+                    <span>July 10, 2016</span>
+                    <span>•</span>
+                    <span>5 min read</span>
+                    <span>•</span>
+                    <span>Performance Optimization</span>
+                </div>
+            </header>
+
+            <div class="post-content">
+                <p>
+                    Our application relied on data that did not change often. It had therefore implemented a solution that cached this data as xml files. These files were written to the web server on the first request and subsequently read whenever they were needed.
+                </p>
+                <p>
+                    Some of the problems that arose due to this was:<br>
+                    a. Since the application was load balanced, a web server servicing a web request was not guaranteed to serve the next web request. This lead to the data in the various web servers quickly getting out of sync.<br>
+                    b. Our application was very slow. Profiling the application showed that reading and writing (i.e. serialization and de-serialization) the XML cache files was one of the biggest bottleneck in the application.
+                </p>
+                <p>
+                    XML serialization is one of the slowest serialization/de-serialization formats in the .Net framework. See the excellent <a href="http://maxondev.com/serialization-performance-comparison-c-net-formats-frameworks-xmldatacontractserializer-xmlserializer-binaryformatter-json-newtonsoft-servicestack-text/" target="_blank" style="color: var(--accent-color);">article</a> where Maxim Novak compares the various types of serialization in the .Net framework.
+                </p>
+                <p>
+                    We therefore decided to change the serialization format from XML to <a href="https://github.com/mgravell/protobuf-net" target="_blank" style="color: var(--accent-color);">ProtoBuf.Net</a>. Protobuf-net is a contract based serializer for .NET code, that writes data in the "protocol buffers" serialization format engineered by Google. This framework component is written by Marc Gravell, considered as a .Net guru.
+                </p>
+                <p>
+                    We also decided to change the application to write the cache files to a single file server and create the cache files in a background thread. I will write a separate article for the same in the future.
+                </p>
+                <p>
+                    Changing the application to ProtoBuf.Net protocol was pretty straightforward.
+                </p>
+
+                <h2>Implementation Steps</h2>
+                <p><strong>a. Use Nuget to install ProtoBuf.Net framework component.</strong></p>
+                <pre><code>Install-Package protobuf-net</code></pre>
+
+                <p><strong>b. Add [ProtoContract] attribute to each class that needs to be serialized and [ProtoMember] Attribute with a unique integer to identify each member that needs to be serialized.</strong></p>
+                <pre><code>using ProtoBuf;
+
+[ProtoContract]
+class Person 
+{
+    [ProtoMember(1)]
+    public int Id {get;set;}
+    
+    [ProtoMember(2)]
+    public string Name {get;set;}
+}</code></pre>
+
+                <p><strong>c. Serialize and deserialize your data</strong></p>
+                <pre><code>// Serialization
+using (var file = File.Create("person.bin")) 
+{
+    Serializer.Serialize(file, person);
+}
+
+// Deserialization
+Person person;
+using (var file = File.OpenRead("person.bin")) 
+{
+    person = Serializer.Deserialize&lt;Person&gt;(file);
+}</code></pre>
+
+                <h2>Results</h2>
+                <p>
+                    As you can see from the charts below, the change from XML to ProtoBuf.Net serialization, caching the files in a single file server, and offloading the work to a background thread was a huge success.
+                </p>
+
+                <img src="protobuf-perf-1.png" alt="ProtoBuf.Net Performance Improvement Part 1" class="post-image">
+                <img src="protobuf-perf-2.png" alt="ProtoBuf.Net Performance Improvement Part 2" class="post-image">
+
+                <div class="highlight-box">
+                    <h3>Using ProtoBuf.Net Serialization</h3>
+                    <p>
+                        The .Net profiler shows "HotSpots" due to serialization and de-serialization are much reduced. File sizes are also much reduced.
+                    </p>
+                </div>
+                
+                <img src="protobuf-serialization-1.jpg" alt="ProtoBuf.Net Serialization Profiler 1" class="post-image">
+                <img src="protobuf-serialization-2.jpg" alt="ProtoBuf.Net Serialization Profiler 2" class="post-image">
+
+                <div class="highlight-box" style="border-left-color: #ef4444;">
+                    <h3 style="color: #ef4444;">Using XML Serialization (Legacy)</h3>
+                    <p>
+                        The .Net profiler shows high CPU usage i.e "HotSpots" due to XML serialization and de-serialization. File sizes are also much larger.
+                    </p>
+                </div>
+
+                <img src="xml-serialization-1.jpg" alt="XML Serialization Profiler 1" class="post-image">
+                <img src="xml-serialization-2.jpg" alt="XML Serialization Profiler 2" class="post-image">
+
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>
