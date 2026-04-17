@@ -132,8 +132,8 @@
             margin-bottom: 0.5rem;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-DV8IAdmD.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/style-CseW8hRq.css">
+  <script type="module" crossorigin src="/assets/main-CGjoi5DH.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-B2LRbnuV.css">
 </head>
 <body>
     <header>
@@ -204,8 +204,30 @@
                 </ol>
 
                 <div class="highlight-box">
-                    <h4>The Decision</h4>
-                    <p>Traditional nightly batch processing simply couldn't meet our performance needs for 1.8 million users. <strong>Real-time generation emerged as the only solution</strong> that could provide the responsiveness and scalability required for a modern health application.</p>
+                    <h4>Internal Architecture</h4>
+                    <div class="mermaid-container reveal">
+                        <pre class="mermaid">
+graph TD
+    User((User)) -->|Login| API[API Gateway]
+    API -->|Auth| Identity[Identity Service]
+    API -->|Fetch| Orchestrator[Recommendation Orchestrator]
+    
+    subgraph Data Sources
+        HP[Health Profile Service]
+        PH[Purchase History DB]
+        RE[Rule Engine - SpEL]
+    end
+    
+    Orchestrator --> HP
+    Orchestrator --> PH
+    Orchestrator --> RE
+    
+    RE -->|Ranking| Result[Ranked Recommendations]
+    Result -->|Cache| Redis[(Redis Caching)]
+    Result --> API
+    API -->|Response| User
+                        </pre>
+                    </div>
                 </div>
 
                 <h2>The Solution: Real-Time Orchestration</h2>
