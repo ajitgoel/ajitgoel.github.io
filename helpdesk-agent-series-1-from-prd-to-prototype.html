@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Helpdesk Agent, Part 1: From PRD to Prototype | Ajit Goel</title>
+    <meta name="description" content="Part 1 of a blog series walking through an enterprise IT helpdesk agent, starting from the PRD and the first architecture decisions in the prototype.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="series-post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="series-post-header reveal">
+                <span class="series-eyebrow">Helpdesk Agent Series · Part 1</span>
+                <h1 class="series-post-title">From PRD to Prototype</h1>
+                <div class="series-post-meta">
+                    <span>April 16, 2026</span>
+                    <span>•</span>
+                    <span>7 min read</span>
+                    <span>•</span>
+                    <span>System Architecture</span>
+                </div>
+            </header>
+
+            <div class="series-post-content reveal">
+                <p class="series-lead">This app is trying to do something a lot of internal AI demos skip: answer employee IT questions without pretending security, approvals, and failure modes do not exist. The PRD is pretty clear about that. It is not just a chatbot. It is an IT helpdesk agent with retrieval, guardrails, human approval, observability, and a path to a production service split.</p>
+
+                <p>I like that framing because it forces the right conversation early. If an agent can create tickets, escalate issues, and touch company workflows, architecture matters more than prompt polish. The interesting part of this repo is how it translates that bigger enterprise story into a small Python prototype.</p>
+
+                <h2>What the PRD is really asking for</h2>
+                <p>The PRD lays out four big ideas that drive the rest of the design:</p>
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Ground answers in company knowledge</h3>
+                        <p>Use RAG so the agent does not make up helpdesk instructions.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Put controls around action-taking</h3>
+                        <p>Use prompt-injection checks, scoped tools, and approval gates before high-stakes operations.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Make the system observable</h3>
+                        <p>Trace the session so you can inspect latency, tool use, and weak spots.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Fail in a boring way</h3>
+                        <p>Return a scripted fallback instead of crashing or improvising bad advice.</p>
+                    </div>
+                </div>
+
+                <p>That is a sensible enterprise baseline. It also means the architecture has to carry a lot more than a simple <code>user -&gt; LLM -&gt; answer</code> loop.</p>
+
+                <h2>What the code actually implements today</h2>
+                <p>The current repo is still a prototype, but it already has the right bones:</p>
+                <div class="series-inline-list">
+                    <span class="series-pill">CLI session runner in <code>main.py</code></span>
+                    <span class="series-pill">LangGraph loop in <code>agent.py</code></span>
+                    <span class="series-pill">Chroma-backed KB search in <code>tools.py</code></span>
+                    <span class="series-pill">Prompt injection checks in <code>guardrails.py</code></span>
+                    <span class="series-pill">Role and session tool narrowing in <code>tool_scoping.py</code></span>
+                    <span class="series-pill">Approval logging in <code>audit.py</code></span>
+                    <span class="series-pill">Phoenix tracing in <code>observability.py</code></span>
+                </div>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+flowchart TD
+    User["Employee asks for help"] --> Guard["Prompt injection guard"]
+    Guard -->|clean| Scope["Role + session tool scoping"]
+    Guard -->|blocked| Stop["Block and log"]
+    Scope --> Agent["LangGraph agent loop"]
+    Agent --> KB["Search knowledge base first"]
+    KB --> Decision{"Confident enough?"}
+    Decision -->|yes| Action{"Need a tool?"}
+    Decision -->|no| Review["Human review"]
+    Action -->|read-only| Tool["Execute tool"]
+    Action -->|write/escalate| Approval["Supervisor approval"]
+    Approval --> Tool
+    Tool --> Agent
+    Agent --> Response["Final response"]
+    Agent --> Trace["Phoenix trace"]
+                    </pre>
+                </div>
+
+                <h2>Why start as one Python app</h2>
+                <p>I think this is the right first decision. The PRD describes eventual microservices, but the code stays monolithic for now. That looks like a compromise until you remember what we are trying to learn first: does the control flow make sense, do the approval gates feel sane, and do the boundaries hold when the agent starts calling tools?</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Pros</h3>
+                        <ul>
+                            <li>Much faster to validate the end-to-end loop.</li>
+                            <li>Easier to debug because all state is local and visible.</li>
+                            <li>Good fit for testing the interaction between retrieval, approvals, and tool binding.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Cons</h3>
+                        <ul>
+                            <li>No real network boundaries between security, orchestration, and retrieval.</li>
+                            <li>Failure isolation is weak because everything lives in one process.</li>
+                            <li>Some production claims in the PRD are only sketched, not enforced.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Where the prototype is honest and where it is aspirational</h2>
+                <p>The good news is that the code mostly matches the spirit of the PRD. The less good news is that several enterprise pieces are still placeholders. Identity is hardcoded by role instead of coming from Okta or Azure AD. The audit log is SQLite, not Postgres with row-level security. The knowledge refresh pipeline is a static in-memory ingest, not a scheduled versioned pipeline.</p>
+
+                <div class="series-note">
+                    <p><strong>The gap is not a problem by itself.</strong> A prototype is supposed to simplify. The important question is whether the simplification preserves the shape of the real system. In this repo, it mostly does. That is why it is a solid base for a blog series.</p>
+                </div>
+
+                <h2>What I would tighten before calling the architecture production-ready</h2>
+                <ul>
+                    <li>Move identity, tool entitlements, and audit storage out of local process memory.</li>
+                    <li>Turn the knowledge base ingest into a scheduled pipeline with document versioning and rollback.</li>
+                    <li>Separate the approval workflow from the agent runtime so a human review does not depend on a terminal prompt.</li>
+                    <li>Expand fallback handling to cover more classes of provider and infrastructure failures.</li>
+                </ul>
+
+                <p>That sets up the rest of the series. In the next post, I’ll walk through the request lifecycle in code, starting from <code>run_session()</code> and ending at the LangGraph routing decisions that make the whole app feel like an agent instead of a scripted assistant.</p>
+
+                <div class="series-nav">
+                    <a href="helpdesk-agent-series-2-request-lifecycle.html">Next: Part 2, how a request moves through the system</a>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>

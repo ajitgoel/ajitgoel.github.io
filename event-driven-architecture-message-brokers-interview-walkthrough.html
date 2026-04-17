@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walking a Staff Interview: Event-Driven Order Fulfillment | Ajit Goel</title>
+    <meta name="description" content="A start-to-finish walkthrough of a staff-level system design interview answer using event-driven architecture, Kafka, DLQs, backpressure, and eventual consistency.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="series-post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="series-post-header reveal">
+                <span class="series-eyebrow">System Design Interview Walkthrough</span>
+                <h1 class="series-post-title">How I Would Walk a Staff Interview on Event-Driven Architecture</h1>
+                <div class="series-post-meta">
+                    <span>April 16, 2026</span>
+                    <span>•</span>
+                    <span>10 min read</span>
+                    <span>•</span>
+                    <span>Architecture</span>
+                </div>
+            </header>
+
+            <div class="series-post-content reveal">
+                <p class="series-lead">A lot of event-driven interview answers sound polished but disconnected. They name Kafka, say “eventual consistency,” mention DLQs, and stop there. That usually falls apart once the interviewer asks what actually happens when an order is placed, a payment is slow, or a poison message hits the system. I wanted this post to stay grounded in one concrete flow from start to finish.</p>
+
+                <p>The PRD in this repo uses an e-commerce order fulfillment system, which is a good interview problem because it forces the right tradeoffs. We need low-latency order intake, independent payment and inventory processing, resilience during spikes, and a way to explain why distributed systems stop behaving like a single transaction.</p>
+
+                <h2>The interview question I would answer</h2>
+                <p>If I translate the PRD into the kind of prompt I have actually heard in interviews, it comes out something like this:</p>
+
+                <pre class="series-code"><code>Design an order processing system for an e-commerce platform.
+Orders should be accepted quickly, payment and inventory should be handled
+asynchronously, and the system should tolerate failures, spikes in traffic,
+and malformed messages. Walk through the architecture and the tradeoffs.</code></pre>
+
+                <p>That prompt matters because it tells me the interviewer is not asking for a CRUD app. They are testing whether I can connect business goals to architecture decisions and failure handling.</p>
+
+                <h2>Step 1: Start with the problem, not the tooling</h2>
+                <p>I would start by saying the business requirement is fast order intake, not immediate end-to-end completion. That one sentence drives the rest of the design. If the goal were “complete payment, reserve stock, update analytics, and respond only after all of that succeeds,” then synchronous request chaining might still be on the table. But that is not the requirement here.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>What we want</h3>
+                        <ul>
+                            <li>Accept orders quickly.</li>
+                            <li>Let downstream domains work independently.</li>
+                            <li>Survive partial outages and traffic spikes.</li>
+                            <li>Make failures visible without blocking healthy work.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>What that implies</h3>
+                        <ul>
+                            <li>The initial API should acknowledge receipt, not full completion.</li>
+                            <li>Payment and inventory should not be in the request path.</li>
+                            <li>State changes will be asynchronous.</li>
+                            <li>Consistency will be eventual, not immediate.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>That is the first decision: I am intentionally choosing an asynchronous architecture because the problem calls for decoupling and elasticity more than immediate consistency.</p>
+
+                <h2>Step 2: Define the service boundaries</h2>
+                <p>From there I would carve the system into domains that already want separate lifecycles: Order, Payment, Inventory, and a Read Model or Analytics side. I would avoid creating ten tiny services in the interview. Four clear boundaries are enough to explain the pattern without turning the answer into a service catalog.</p>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+flowchart LR
+    Client[Client]
+    Order[Order Service]
+    Broker[Kafka Topics]
+    Payment[Payment Service]
+    Inventory[Inventory Service]
+    Read[Read Model]
+
+    Client --> Order
+    Order --> Broker
+    Broker --> Payment
+    Broker --> Inventory
+    Broker --> Read
+    Payment --> Broker
+    Inventory --> Broker
+                    </pre>
+                </div>
+
+                <p>The reason I like these boundaries is that they map to ownership and failure isolation. Payment can fail because Stripe is slow. Inventory can fail because a warehouse database is degraded. Analytics can lag because a projection job is rebuilding. None of those should stop the platform from accepting a new order.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Pros</h3>
+                        <ul>
+                            <li>Each domain can scale independently.</li>
+                            <li>Failures stay local more often.</li>
+                            <li>The architecture is easier to reason about than a shared monolith with cross-domain writes.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Cons</h3>
+                        <ul>
+                            <li>Distributed tracing and debugging get harder.</li>
+                            <li>Transactions now cross services, so rollback becomes a workflow problem.</li>
+                            <li>You need stronger contracts around events and idempotency.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Step 3: Walk the happy path from request to confirmation</h2>
+                <p>This is the part I would say out loud in the interview, step by step, because each decision should feed the next one.</p>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Order as Order Service
+    participant OrderDB as Order DB
+    participant Kafka as Kafka
+    participant Payment as Payment Service
+    participant Inventory as Inventory Service
+    participant Read as Read Model
+
+    Client->>Order: POST /api/orders
+    Order->>OrderDB: Save order as PENDING
+    Order->>Kafka: Publish OrderCreated
+    Order-->>Client: 202 Accepted + orderId
+    Kafka-->>Payment: OrderCreated
+    Kafka-->>Inventory: OrderCreated
+    Payment->>Kafka: PaymentSucceeded or PaymentFailed
+    Inventory->>Kafka: InventoryReserved or InventoryRejected
+    Kafka-->>Order: Payment and inventory events
+    Order->>OrderDB: Update status to CONFIRMED or CANCELLED
+    Kafka-->>Read: Project events into read model
+                </pre>
+                </div>
+
+                <p>My explanation would go like this:</p>
+
+                <p>The client sends <code>POST /api/orders</code> to the Order Service. The Order Service validates the request, stores a new order with a <code>PENDING</code> state, publishes an <code>OrderCreated</code> event to Kafka, and returns <code>202 Accepted</code>. Payment and Inventory consume that event independently. They do their work and publish the outcome as new facts. The Order Service listens to those downstream events and updates its state. In parallel, the read side builds denormalized views for dashboards and reporting.</p>
+
+                <p>That explanation matters because it shows the interviewer I understand the difference between command handling, event propagation, and state convergence.</p>
+
+                <h2>Step 4: Explain why I return 202 instead of waiting</h2>
+                <p>This is usually where the interviewer pushes: why not just call Payment synchronously from Order?</p>
+
+                <p>My answer is that synchronous chaining creates the exact failure shape I want to avoid. If Order calls Payment, Payment calls Inventory, and any one of them is slow, the entire request path inherits that latency. If Payment is down, Order is effectively down. That is fine for a tightly coupled transactional workflow inside one boundary. It is a poor fit for a cross-domain system that needs elasticity.</p>
+
+                <div class="series-note">
+                    <p><strong>The tradeoff is user experience.</strong> Returning <code>202 Accepted</code> means the client sees “processing” before it sees “confirmed.” I would call that out explicitly in the interview instead of pretending it is free.</p>
+                </div>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Why this is better</h3>
+                        <ul>
+                            <li>The write path stays fast.</li>
+                            <li>Order intake survives downstream slowness.</li>
+                            <li>Consumers can evolve independently.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>What gets worse</h3>
+                        <ul>
+                            <li>The client must handle intermediate states.</li>
+                            <li>Support teams must understand in-flight orders.</li>
+                            <li>Product managers need clear messaging around “processing” vs “completed.”</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Step 5: Use Kafka as a buffer, not just a transport</h2>
+                <p>Once I choose asynchronous flow, the next question is why Kafka. In this design Kafka is not just moving messages around. It is absorbing rate mismatch between producers and consumers.</p>
+
+                <p>If the Order Service can publish 10,000 <code>OrderCreated</code> events per second during a spike, and the Payment Service can only process 500 per second because it depends on an external gateway, Kafka gives me a buffer. The requests are accepted, the events are durably stored, and the consumer works through the backlog at a controlled rate.</p>
+
+                <p>That is the backpressure story. I would say it plainly because “Kafka handles backpressure” is too hand-wavy for a staff interview. What I really mean is the broker decouples producer throughput from consumer throughput, and the consumer concurrency is intentionally bounded.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Pros</h3>
+                        <ul>
+                            <li>Traffic spikes do not immediately melt downstream services.</li>
+                            <li>Consumers can recover after downtime by replaying from offsets.</li>
+                            <li>The platform can add new consumers without rewriting Order.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Cons</h3>
+                        <ul>
+                            <li>Queues can hide pain until lag becomes severe.</li>
+                            <li>Capacity planning moves from threads to partitions, lag, and retention.</li>
+                            <li>Operational maturity matters a lot more than in a simple REST setup.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Step 6: Show how eventual consistency appears in real state</h2>
+                <p>I would not define eventual consistency in abstract terms. I would show it with a user-visible example: an order is accepted at time T1, payment finishes at T2, inventory reservation completes at T3, and the read model catches up at T4. In between those moments, different parts of the system can show slightly different but valid states.</p>
+
+                <p>That is not a bug. That is the cost of decoupling. The important architecture decision is to make those states explicit and expected.</p>
+
+                <pre class="series-code"><code>PENDING -> PAYMENT_CONFIRMED -> INVENTORY_RESERVED -> CONFIRMED
+
+or
+
+PENDING -> PAYMENT_FAILED -> CANCELLED</code></pre>
+
+                <p>I would also say that eventual consistency is acceptable here because ordering and payment are business workflows, not bank ledger entries. If the requirement were “all updates must commit atomically or not at all across services,” then I would need a very different design or a much tighter boundary.</p>
+
+                <h2>Step 7: Cover poison messages and DLQs before the interviewer asks</h2>
+                <p>Staff interviews usually turn into failure mode interviews pretty quickly. One of the first failure cases I would bring up myself is the poison message: maybe a bad schema, a missing field, or a code bug makes one event fail every time it is consumed.</p>
+
+                <p>If I do nothing, that message can be retried forever and block forward progress for that partition or consumer flow. So I would explain the retry policy and the DLQ together: retry a small number of times with backoff, then route the event to a dead-letter topic for inspection.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Why DLQ is the right move</h3>
+                        <ul>
+                            <li>Healthy messages keep flowing.</li>
+                            <li>Operators get a clean place to inspect bad events.</li>
+                            <li>The system stops pretending every failure is transient.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>What DLQ does not solve</h3>
+                        <ul>
+                            <li>It does not fix bad producers.</li>
+                            <li>It can become a silent graveyard without alerting and ownership.</li>
+                            <li>Replay needs a safe operational workflow.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>That last point is important. I have seen teams proudly mention DLQs and forget that somebody still has to monitor, triage, and replay them safely.</p>
+
+                <h2>Step 8: Add the read side because staff interviews care about scale</h2>
+                <p>The PRD also introduces a read-optimized side, which I think is a smart move for a staff-level answer. I would say that transactional writes and analytical reads have different needs. The Order Service should optimize for correctness and command latency. Reporting should optimize for query flexibility and throughput.</p>
+
+                <p>That is where projections help. Instead of joining across order, payment, and inventory tables on every read, I can project events into a denormalized view in Elasticsearch or another read-optimized store.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Why projections help</h3>
+                        <ul>
+                            <li>Heavy reporting does not hit the write database.</li>
+                            <li>Read models can be shaped around query patterns.</li>
+                            <li>Rebuild is possible by replaying the stream.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Tradeoffs</h3>
+                        <ul>
+                            <li>Now there is another lagging copy of truth.</li>
+                            <li>Projection bugs can produce bad views even when events are correct.</li>
+                            <li>Replays need careful versioning and migration strategy.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>What I would say could be done better</h2>
+                <p>This is the section that usually separates a decent answer from a stronger one. I would not pitch the PRD architecture as perfect. I would show how I would harden it.</p>
+
+                <h3>Use the outbox pattern</h3>
+                <p>The PRD shows the Order Service saving to the database and publishing to Kafka in sequence. In a real system, I would worry about the gap between those steps. If the DB write succeeds and the publish fails, the order exists but no event goes out. That is exactly where the transactional outbox pattern helps.</p>
+
+                <h3>Design for idempotency explicitly</h3>
+                <p>At-least-once delivery is common in event systems. That means Payment and Inventory should be able to process the same event more than once without double-charging or double-reserving. I would call out idempotency keys, dedupe tables, and business-safe consumers.</p>
+
+                <h3>Be careful with choreography</h3>
+                <p>The PRD leans toward event choreography, which is fine for a compact example. But once the business workflow gets more complex, I would at least discuss whether a saga orchestrator is needed for visibility and control. Choreography keeps services loosely coupled, but it can become hard to reason about when there are too many participants and compensating actions.</p>
+
+                <h3>Own the event contract</h3>
+                <p>I would want schema versioning, compatibility rules, and probably a schema registry. A lot of “Kafka problems” are really weak event governance problems.</p>
+
+                <h3>Make observability first-class</h3>
+                <p>I would add metrics for consumer lag, DLQ volume, retry rates, end-to-end order completion latency, and projection staleness. In interviews I like to say that asynchronous systems fail diagonally. You need telemetry that crosses services and topics or you will spend too much time guessing.</p>
+
+                <h2>The concise answer I would leave the interviewer with</h2>
+                <p>I would close by summarizing the logic in one chain: we return <code>202 Accepted</code> because fast order intake matters more than synchronous completion; that pushes us toward asynchronous processing; once we do that, a broker like Kafka gives us decoupling, fan-out, buffering, and replay; because services now update independently, we accept eventual consistency and model state transitions explicitly; because failures are inevitable, we add bounded retries, DLQs, idempotent consumers, and read-side projections for scale.</p>
+
+                <p>That is the answer I would want to hear from a candidate too. Not just the tools, but the reasoning that connects one decision to the next.</p>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>

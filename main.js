@@ -2,25 +2,11 @@ import mermaid from 'mermaid';
 
 // Initialize Mermaid
 mermaid.initialize({
-    startOnLoad: true,
+    startOnLoad: false,
     theme: 'dark',
     securityLevel: 'loose',
     fontFamily: 'Inter, system-ui, sans-serif',
 });
-
-// Scroll Reveal Animation
-const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.classList.add('active');
-        }
-    });
-}, observerOptions);
 
 document.addEventListener('DOMContentLoaded', () => {
     // Create and inject modal for Mermaid zooming
@@ -49,7 +35,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const revealElements = document.querySelectorAll('.reveal');
-    revealElements.forEach(el => observer.observe(el));
+    if ('IntersectionObserver' in window) {
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, observerOptions);
+
+        // Keep anything already on screen visible before enabling JS-driven reveal styles.
+        revealElements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            const inView = rect.top < window.innerHeight && rect.bottom > 0;
+            if (inView) {
+                el.classList.add('active');
+            }
+        });
+
+        document.documentElement.classList.add('js-reveal');
+        revealElements.forEach(el => observer.observe(el));
+    } else {
+        revealElements.forEach(el => el.classList.add('active'));
+    }
+
+    const renderMermaidDiagrams = async () => {
+        const diagrams = document.querySelectorAll('.mermaid');
+        for (const diagram of diagrams) {
+            try {
+                await mermaid.run({ nodes: [diagram] });
+            } catch (error) {
+                console.error('Mermaid render failed:', error);
+                const container = diagram.closest('.mermaid-container');
+                if (container) {
+                    container.classList.add('mermaid-error');
+                }
+            }
+        }
+    };
+
+    renderMermaidDiagrams();
 
     // Handle Mermaid Zoom Buttons
     const mermaidContainers = document.querySelectorAll('.mermaid-container');
@@ -96,4 +126,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-

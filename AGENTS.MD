@@ -19,3 +19,9 @@ To ensure the blog feels personal and authentic:
 - Use semantic HTML (h2, h3 for headings).
 - Use `pre` and `code` tags for code snippets.
 - Use `mermaid-container reveal` for diagrams to maintain the site's animation system.
+
+### 4. Resilience for Blog Pages
+- Blog post content must be readable even if JavaScript fails, Mermaid fails to render, or `IntersectionObserver` is unavailable.
+- Never rely on `.reveal` or any animation class to keep core article content hidden by default. Reveal effects should be progressive enhancement only.
+- When adding Mermaid diagrams, keep the surrounding article content visible without the diagram, and prefer simpler Mermaid syntax if a diagram is optional.
+- After creating a new standalone blog page, make sure it is included in any explicit multi-page build config such as `vite.config.js` so the page is emitted in production builds.
