@@ -23,8 +23,51 @@ const observer = new IntersectionObserver((entries) => {
 }, observerOptions);
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Create and inject modal for Mermaid zooming
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content"></div>
+        <div class="close-modal">&times;</div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.modal-content');
+    const closeBtn = modal.querySelector('.close-modal');
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            modalContent.innerHTML = '';
+        }, 300);
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
     const revealElements = document.querySelectorAll('.reveal');
     revealElements.forEach(el => observer.observe(el));
+
+    // Handle Mermaid Zoom Buttons
+    const mermaidContainers = document.querySelectorAll('.mermaid-container');
+    mermaidContainers.forEach(container => {
+        const zoomBtn = document.createElement('button');
+        zoomBtn.className = 'zoom-btn';
+        zoomBtn.innerText = 'Zoom Diagram';
+        container.appendChild(zoomBtn);
+
+        zoomBtn.addEventListener('click', () => {
+            const svg = container.querySelector('.mermaid svg');
+            if (svg) {
+                modalContent.innerHTML = svg.outerHTML;
+                modal.style.display = 'flex';
+                setTimeout(() => modal.classList.add('active'), 10);
+            }
+        });
+    });
 
     // Smooth scroll for nav links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
