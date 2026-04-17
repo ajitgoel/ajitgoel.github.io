@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Helpdesk Agent, Part 5: HITL, Observability, and the Production Path | Ajit Goel</title>
+    <meta name="description" content="Part 5 of the enterprise helpdesk agent series, covering human approval, audit logging, tracing, and how the prototype should evolve into microservices.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+  <script type="module" crossorigin src="/assets/main-Dj-_oxc1.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-BCOYL71K.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="series-post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="series-post-header reveal">
+                <span class="series-eyebrow">Helpdesk Agent Series · Part 5</span>
+                <h1 class="series-post-title">Human Approval, Tracing, and the Jump to Real Services</h1>
+                <div class="series-post-meta">
+                    <span>April 16, 2026</span>
+                    <span>•</span>
+                    <span>9 min read</span>
+                    <span>•</span>
+                    <span>Reliability and Operations</span>
+                </div>
+            </header>
+
+            <div class="series-post-content reveal">
+                <p class="series-lead">By the time we get here, the app has already screened the input, narrowed the tool surface, and grounded itself on the KB. The last big architectural question is what happens when the model wants to do something with consequences. This is where human-in-the-loop, audit logging, and observability stop being nice extras and become the reliability layer.</p>
+
+                <h2>How HITL works in the prototype</h2>
+                <p>In <code>agent.py</code>, write actions like <code>create_ticket</code> and <code>escalate_to_manager</code> route through <code>hitl_gate()</code>. The gate prints the proposed action, shows the tool arguments, waits for approval, and then records the decision through <code>log_hitl_decision()</code>.</p>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+flowchart TD
+    ToolCall["Model proposes high-stakes tool call"] --> Gate["HITL gate"]
+    Gate --> Reviewer["Supervisor reviews action"]
+    Reviewer -->|approve| Audit["Write audit record"]
+    Reviewer -->|reject| Audit
+    Audit -->|approved| Execute["Run tool"]
+    Audit -->|rejected| Reject["Return rejection message"]
+    Execute --> Continue["Loop back into agent reasoning"]
+                    </pre>
+                </div>
+
+                <p>That is exactly the right control flow for a prototype. It makes the pause visible, it forces the model to explain what it intends to do, and it captures the approval decision in persistent storage.</p>
+
+                <h2>The audit log is useful, but it is still a prototype choice</h2>
+                <p><code>audit.py</code> writes decisions to a local SQLite database with a timestamp, tool name, arguments, reviewer role, and reason. For local development, that is a practical move. For production, it falls short of the PRD target, which explicitly calls for an append-only Postgres store with stronger compliance guarantees.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Why SQLite works here</h3>
+                        <ul>
+                            <li>Zero operational overhead for local testing.</li>
+                            <li>Easy to inspect and validate while building the workflow.</li>
+                            <li>Good enough to prove the approval event model.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Why it should change later</h3>
+                        <ul>
+                            <li>Weak story for multi-user concurrency and access control.</li>
+                            <li>No built-in path to append-only policy enforcement.</li>
+                            <li>Not a strong compliance answer once auditors get involved.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>Observability is one of the stronger parts of the prototype</h2>
+                <p><code>observability.py</code> launches Arize Phoenix and instruments LangChain with OpenTelemetry. That is a good move because agent debugging is usually an observability problem before it is a model problem. If a session goes sideways, you want to know whether retrieval was weak, the model over-called tools, or latency exploded in a specific node.</p>
+
+                <pre class="series-code"><code>tracer_provider = register(
+    project_name="helpdesk-agent",
+    endpoint="http://localhost:6006/v1/traces",
+)
+LangChainInstrumentor().instrument(tracer_provider=tracer_provider)</code></pre>
+
+                <p>The limitation is that tracing is still local and session-centric. The PRD imagines something broader: confidence drift monitoring, latency analysis across services, and a clearer operational picture once the system is split into multiple deployable units.</p>
+
+                <h2>Where the production split should happen</h2>
+                <p>The PRD already points in the right direction. If I were hardening this design, I would split it along responsibility boundaries rather than library boundaries.</p>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+flowchart LR
+    User["Employee"] --> Gateway["Gateway and security service"]
+    Gateway --> Orchestrator["Agent orchestrator"]
+    Orchestrator --> Knowledge["Knowledge service"]
+    Orchestrator --> HITL["Approval service"]
+    HITL --> Audit["Audit store"]
+    Orchestrator --> Tools["Internal tool adapters"]
+    Gateway -.-> Trace["Central tracing"]
+    Orchestrator -.-> Trace
+    Knowledge -.-> Trace
+    HITL -.-> Trace
+                    </pre>
+                </div>
+
+                <h3>Why that service split makes sense</h3>
+                <ul>
+                    <li><strong>Gateway and security:</strong> own prompt filtering, authentication, and entitlement checks.</li>
+                    <li><strong>Agent orchestrator:</strong> own graph state, tool routing, and fallback logic.</li>
+                    <li><strong>Knowledge service:</strong> own ingestion, embeddings, retrieval tuning, and versioning.</li>
+                    <li><strong>HITL service:</strong> own approval queue, reviewer UX, and durable audit logging.</li>
+                </ul>
+
+                <h2>The biggest thing I would improve</h2>
+                <p>The current approval path is still synchronous and terminal-driven. That is the first thing I would replace. A real agent should be able to suspend state, emit an approval event, and resume when a reviewer approves from a separate interface. The PRD hints at exactly that, and the architecture becomes much cleaner once the orchestrator does not have to block on stdin.</p>
+
+                <div class="series-note">
+                    <p><strong>My overall take:</strong> this repo is a good prototype because it forces the right conversations early. It does not pretend a helpdesk agent is only an LLM problem. It treats retrieval, permissions, approvals, and tracing as part of the product. That is the right mindset if the goal is to build something a company could trust.</p>
+                </div>
+
+                <p>This is the last post in the series, but it also ties back to the first one. The PRD starts with enterprise reliability requirements, and the code already reflects those priorities even where the implementation is still local or simplified. That is exactly how I would want an architecture prototype to behave.</p>
+
+                <div class="series-nav">
+                    <a href="helpdesk-agent-series-4-guardrails-and-tool-scoping.html">Previous: Part 4, guardrails and tool scoping</a>
+                    <a href="helpdesk-agent-series-1-from-prd-to-prototype.html">Start the series again from Part 1</a>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

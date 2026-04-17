@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Helpdesk Agent, Part 4: Guardrails and Tool Scoping | Ajit Goel</title>
+    <meta name="description" content="Part 4 of the enterprise helpdesk agent series, covering prompt injection defense, role boundaries, and session-level tool scoping.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+  <script type="module" crossorigin src="/assets/main-Dj-_oxc1.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-BCOYL71K.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="series-post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="series-post-header reveal">
+                <span class="series-eyebrow">Helpdesk Agent Series · Part 4</span>
+                <h1 class="series-post-title">Why the Security Layers Matter More Than the Prompt</h1>
+                <div class="series-post-meta">
+                    <span>April 16, 2026</span>
+                    <span>•</span>
+                    <span>8 min read</span>
+                    <span>•</span>
+                    <span>Security Architecture</span>
+                </div>
+            </header>
+
+            <div class="series-post-content reveal">
+                <p class="series-lead">Once an agent can do anything beyond answering questions, the architecture has to assume users will say weird things, malicious things, or just confusing things. This repo takes that seriously in two places: it checks for prompt injection, and it shrinks the tool surface based on role and session scope.</p>
+
+                <h2>The prompt injection guard is intentionally layered</h2>
+                <p><code>guardrails.py</code> does not rely on one detector. It starts with regex-style heuristics and then calls a smaller LLM classifier as a second pass. That gives the app a cheap, fast filter for obvious attacks and a semantic backstop for trickier phrasing.</p>
+
+                <pre class="series-code"><code>if heuristic_check(user_input):
+    return {"safe": False, "reason": "heuristic pattern matched"}
+
+if llm_classifier_check(user_input):
+    return {"safe": False, "reason": "LLM classifier flagged as injection"}</code></pre>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+flowchart TD
+    Input["Incoming user text"] --> Heuristic["Regex and keyword patterns"]
+    Heuristic -->|flagged| Block["Block request"]
+    Heuristic -->|clean| LLM["Small classifier model"]
+    LLM -->|injection| Block
+    LLM -->|safe| Scope["Continue to tool scoping"]
+                    </pre>
+                </div>
+
+                <h2>What this gets right</h2>
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Pros</h3>
+                        <ul>
+                            <li>Low-latency checks catch obvious jailbreak language early.</li>
+                            <li>The second-stage classifier can catch attacks that do not match a literal pattern.</li>
+                            <li>The rest of the app does not need to trust raw user input blindly.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Cons</h3>
+                        <ul>
+                            <li>The classifier itself is another model dependency and another failure point.</li>
+                            <li>False positives can block legitimate support requests.</li>
+                            <li>The code does not currently show what happens if the classifier call fails.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h2>The stronger control is tool scoping</h2>
+                <p>Prompt injection filters are useful, but they should not be the only thing standing between a user and a dangerous tool. The better control in this app is <code>SessionScope</code>. It combines a role boundary with an optional per-session allowlist. In practice that means a session can only shrink its permissions, never grow them.</p>
+
+                <pre class="series-code"><code>role_allowed = ROLE_PERMISSIONS.get(role, set())
+if session_allowlist is not None:
+    self.allowed_tools = role_allowed &amp; session_allowlist
+else:
+    self.allowed_tools = role_allowed</code></pre>
+
+                <p>I like this design a lot. It is simple, but it encodes an important security principle: session configuration should only reduce risk, not widen it.</p>
+
+                <h2>Why binding only allowed tools is a big deal</h2>
+                <p>When the agent is built, it binds only the tools the scope allows. That means the model never even sees disallowed tools in its callable interface.</p>
+
+                <div class="series-note">
+                    <p><strong>This is one of the best decisions in the repo.</strong> It avoids the common pattern where every tool is exposed to the model and the prompt says “please do not use the dangerous ones.” Architecture beats pleading.</p>
+                </div>
+
+                <h2>Where the security story is still incomplete</h2>
+                <p>The PRD says the future version will derive session scope from enterprise identity and entitlements. The prototype does not do that yet. Roles are hardcoded. Session manifests are local. There is no external policy engine, no JWT validation, and no cache-backed session context.</p>
+
+                <h3>What can be better</h3>
+                <ul>
+                    <li>Move role and entitlement decisions behind a real identity boundary.</li>
+                    <li>Store policy centrally so the orchestrator is not the source of truth.</li>
+                    <li>Decide explicitly whether injection classifier failures should fail closed or degrade safely.</li>
+                    <li>Log blocked requests in a structured security event store, not just a terminal message.</li>
+                </ul>
+
+                <h2>How this feeds the rest of the architecture</h2>
+                <p>These controls matter because the next subsystem is human approval. By the time a request reaches HITL, the app should already know that the user input was screened and the requested tool is even eligible in the first place. HITL should not be the first safety mechanism. It should be the last one before an actual side effect.</p>
+
+                <p>That is where I’ll go next: approvals, audit logging, observability, and the places where this prototype already points toward a real distributed design.</p>
+
+                <div class="series-nav">
+                    <a href="helpdesk-agent-series-3-rag-and-knowledge-pipeline.html">Previous: Part 3, RAG and the knowledge pipeline</a>
+                    <a href="helpdesk-agent-series-5-hitl-observability-and-production-path.html">Next: Part 5, HITL, tracing, and the production path</a>
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
