@@ -221,7 +221,33 @@ sequenceDiagram
                     </div>
                 </div>
 
-                <h2>Step 6: Show how eventual consistency appears in real state</h2>
+                <h2>Step 6: Show the AWS cloud-native alternative</h2>
+                <p>I also want this answer to show platform flexibility, because that usually comes up in a staff interview. If the company is deep in AWS, I would explain that the same pattern can be implemented with <code>SNS</code> and <code>SQS</code> instead of Kafka.</p>
+
+                <p>The mapping is pretty clean. <code>SNS</code> plays the broadcaster role. The Order Service publishes <code>OrderCreated</code> once to an SNS topic, and SNS fans that event out to separate SQS queues owned by Payment and Inventory. Each service then consumes from its own queue at its own pace. That preserves the two things I care about most here: decoupling and buffering.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>AWS mapping</h3>
+                        <ul>
+                            <li><code>Kafka topic</code> becomes one <code>SNS topic</code> plus service-specific <code>SQS queues</code>.</li>
+                            <li><code>Consumer groups</code> become separate queues per downstream service.</li>
+                            <li><code>DLQ</code> stays a first-class pattern because SQS supports native dead-letter queues.</li>
+                        </ul>
+                    </div>
+                    <div class="series-card">
+                        <h3>Tradeoffs</h3>
+                        <ul>
+                            <li>SNS + SQS is a strong fit for AWS-native teams that want managed infrastructure.</li>
+                            <li>Kafka is usually stronger when replay, stream retention, and event history are core requirements.</li>
+                            <li>SQS standard queues do not guarantee strict ordering, so FIFO queues may be needed for order-sensitive flows.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <p>I would also call out why SNS matters instead of sending directly to SQS. If Order publishes straight to one queue per consumer, the producer has to know every downstream service. SNS keeps Order decoupled. New consumers can subscribe later without changing Order at all.</p>
+
+                <h2>Step 7: Show how eventual consistency appears in real state</h2>
                 <p>I would not define eventual consistency in abstract terms. I would show it with a user-visible example: an order is accepted at time T1, payment finishes at T2, inventory reservation completes at T3, and the read model catches up at T4. In between those moments, different parts of the system can show slightly different but valid states.</p>
 
                 <p>That is not a bug. That is the cost of decoupling. The important architecture decision is to make those states explicit and expected.</p>
@@ -234,7 +260,7 @@ PENDING -> PAYMENT_FAILED -> CANCELLED</code></pre>
 
                 <p>I would also say that eventual consistency is acceptable here because ordering and payment are business workflows, not bank ledger entries. If the requirement were “all updates must commit atomically or not at all across services,” then I would need a very different design or a much tighter boundary.</p>
 
-                <h2>Step 7: Cover poison messages and DLQs before the interviewer asks</h2>
+                <h2>Step 8: Cover poison messages and DLQs before the interviewer asks</h2>
                 <p>Staff interviews usually turn into failure mode interviews pretty quickly. One of the first failure cases I would bring up myself is the poison message: maybe a bad schema, a missing field, or a code bug makes one event fail every time it is consumed.</p>
 
                 <p>If I do nothing, that message can be retried forever and block forward progress for that partition or consumer flow. So I would explain the retry policy and the DLQ together: retry a small number of times with backoff, then route the event to a dead-letter topic for inspection.</p>
@@ -260,7 +286,7 @@ PENDING -> PAYMENT_FAILED -> CANCELLED</code></pre>
 
                 <p>That last point is important. I have seen teams proudly mention DLQs and forget that somebody still has to monitor, triage, and replay them safely.</p>
 
-                <h2>Step 8: Add the read side because staff interviews care about scale</h2>
+                <h2>Step 9: Add the read side because staff interviews care about scale</h2>
                 <p>The PRD also introduces a read-optimized side, which I think is a smart move for a staff-level answer. I would say that transactional writes and analytical reads have different needs. The Order Service should optimize for correctness and command latency. Reporting should optimize for query flexibility and throughput.</p>
 
                 <p>That is where projections help. Instead of joining across order, payment, and inventory tables on every read, I can project events into a denormalized view in Elasticsearch or another read-optimized store.</p>
