@@ -132,7 +132,7 @@
             margin-bottom: 0.5rem;
         }
     </style>
-  <script type="module" crossorigin src="/assets/main-CGjoi5DH.js"></script>
+  <script type="module" crossorigin src="/assets/main-D2SzYy4Z.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/style-B2LRbnuV.css">
 </head>
 <body>
@@ -170,7 +170,7 @@
             </header>
 
             <div class="post-content reveal">
-                <p>In the modern retail landscape, "one size fits all" is a relic of the past. At Safeway, we faced a formidable challenge: how to deliver hyper-personalized product and recipe recommendations that not only reflect a user’s purchase history but also their unique health profiles—all while maintaining the performance expected of a tier-1 digital experience.</p>
+                <p>When I joined Safeway, one of the first big challenges was handling 1.8 million users who all wanted something different. We weren't just looking at what they bought last week; we were trying to index their chronic conditions, nutrition goals, and dietary needs into real-time recommendations. No one wants to wait 5 seconds for a page to load just to see a recipe, so the performance bar was high.</p>
 
                 <div class="stat-grid">
                     <div class="stat-card">
@@ -187,21 +187,18 @@
                     </div>
                 </div>
 
-                <h2>The Challenge</h2>
-                <p>We needed a system capable of synthesizing vast amounts of data—chronic conditions, dietary preferences, nutrition goals, and years of household purchase history—into actionable recommendations. The solution had to be:</p>
+                <h2>The Problem</h2>
+                <p>Scaling personalized health advice isn't easy. You have to mash together health profiles (like diabetes or heart health) with years of grocery purchase history. My team and I needed a solution that was:</p>
                 <ul>
-                    <li><strong>Scalable:</strong> Support millions of concurrent users without degradation.</li>
-                    <li><strong>Flexible:</strong> Allow for rapid adjustments to ranking logic and business rules.</li>
-                    <li><strong>Fast:</strong> Recommendations needed to be ready the moment a user logged in.</li>
+                    <li><strong>Fast:</strong> Recommendations had to be ready the second someone logged in.</li>
+                    <li><strong>Accurate:</strong> Medical and dietary rules are strict. If someone is vegan, you can't show them steak recipes.</li>
+                    <li><strong>Reliable:</strong> If the recommendation engine goes down, the whole experience breaks.</li>
                 </ul>
 
-                <h2>The Architectural Crossroads</h2>
-                <p>We evaluated three primary approaches to solve this data orchestration problem:</p>
-                <ol>
-                    <li><strong>Nightly Batch Generation:</strong> Standard batch processing but struggled with data freshness and the sheer volume of permutations.</li>
-                    <li><strong>BigQuery HDL (Google Health Data Layer):</strong> Faced significant technical barriers in integrating with existing legacy systems.</li>
-                    <li><strong>Real-time Generation:</strong> Dynamically assembling recommendations at request time.</li>
-                </ol>
+                <h2>How We Built It</h2>
+                <p>We looked at a few options. We tried nightly batch jobs, but they were too slow—by the time the job finished, the data was old. We also looked at Google's BigQuery Health Data Layer, but it didn't play nice with our existing legacy stack.</p>
+                
+                <p>In the end, we decided to build a real-time orchestration engine. It works by capturing the user's ID at login and immediately pulling data from three main sources: their health profile, their shopping history, and our SpEL-based rule engine.</p>
 
                 <div class="highlight-box">
                     <h4>Internal Architecture</h4>
@@ -230,17 +227,8 @@ graph TD
                     </div>
                 </div>
 
-                <h2>The Solution: Real-Time Orchestration</h2>
-                <p>Upon user login, the system captures key identifiers and triggers a real-time recommendation engine. This engine integrates:</p>
-                <ul>
-                    <li><strong>User Health Profiles:</strong> Chronic conditions (e.g., diabetes, heart health), dietary preferences (vegan, keto), and specific nutrition goals.</li>
-                    <li><strong>Household Purchase History:</strong> Analyzing patterns to ensure recommendations are relevant to actual buying habits.</li>
-                </ul>
-                <p>The system dynamically assembles and ranks recommendations for each widget, ensuring a unique and relevant experience for every user. We implemented advanced caching layers and configuration management to ensure speed and flexibility without sacrificing accuracy.</p>
-
-                <h2>Outcome and Impact</h2>
-                <p>By shifting to a real-time model, we successfully launched a highly responsive personalization platform. We now serve <strong>9 terabytes of data</strong> to over <strong>1.8 million users</strong>, delivering a personalized experience that evolves with the user.</p>
-                <p>This architecture doesn't just solve today's challenge—it provides the foundation for future innovations in AI-driven health and wellness retail.</p>
+                <h2>Result</h2>
+                <p>The shift to real-time was a game changer. We're now processing 9 terabytes of data with sub-200ms latency. The best part? The system actually learns. As users interact with their recommendations, the ranking improves. This project wasn't just about moving data—it was about making it useful.</p>
             </div>
         </article>
     </main>
