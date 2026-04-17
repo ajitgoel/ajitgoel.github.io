@@ -163,7 +163,8 @@
             </header>
 
             <div class="post-content reveal">
-                <p>Ensuring that the zones and their components on the personalized health homepage could be dynamically configured based on each user’s profile presented a significant architectural challenge. We needed a solution that offered high flexibility and maintainability, allowing for configuration changes without the overhead of application redeployments.</p>
+
+                <p>One of the hardest parts of the personalized health project was making the homepage dynamic without having to redeploy the app every time we wanted to change a rule. We needed a way to swap out components based on a user’s specific profile—like showing different zones for someone with diabetes vs. someone focused on keto—all while keeping the backend lean and fast.</p>
 
                 <h2>The Architectural Crossroads</h2>
                 <p>We evaluated three primary paths for implementing this dynamic Content As A Service (CAAS) orchestration:</p>

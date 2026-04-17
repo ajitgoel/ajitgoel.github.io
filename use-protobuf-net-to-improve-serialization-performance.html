@@ -167,23 +167,17 @@
             </header>
 
             <div class="post-content">
-                <p>
-                    Our application relied on data that did not change often. It had therefore implemented a solution that cached this data as xml files. These files were written to the web server on the first request and subsequently read whenever they were needed.
-                </p>
-                <p>
-                    Some of the problems that arose due to this was:<br>
-                    a. Since the application was load balanced, a web server servicing a web request was not guaranteed to serve the next web request. This lead to the data in the various web servers quickly getting out of sync.<br>
-                    b. Our application was very slow. Profiling the application showed that reading and writing (i.e. serialization and de-serialization) the XML cache files was one of the biggest bottleneck in the application.
-                </p>
-                <p>
-                    XML serialization is one of the slowest serialization/de-serialization formats in the .Net framework. See the excellent <a href="http://maxondev.com/serialization-performance-comparison-c-net-formats-frameworks-xmldatacontractserializer-xmlserializer-binaryformatter-json-newtonsoft-servicestack-text/" target="_blank" style="color: var(--accent-color);">article</a> where Maxim Novak compares the various types of serialization in the .Net framework.
-                </p>
-                <p>
-                    We therefore decided to change the serialization format from XML to <a href="https://github.com/mgravell/protobuf-net" target="_blank" style="color: var(--accent-color);">ProtoBuf.Net</a>. Protobuf-net is a contract based serializer for .NET code, that writes data in the "protocol buffers" serialization format engineered by Google. This framework component is written by Marc Gravell, considered as a .Net guru.
-                </p>
-                <p>
-                    We also decided to change the application to write the cache files to a single file server and create the cache files in a background thread. I will write a separate article for the same in the future.
-                </p>
+
+                <p>We had a caching problem. Our app was storing data that didn't change much in XML files on the web server. It seemed fine at first—load the file once, cache it, and you're good. But as we scaled, it fell apart for two big reasons:</p>
+                <ol>
+                    <li><strong>Syncing:</strong> We were behind a load balancer, so one server might have the latest cache while another was totally out of sync.</li>
+                    <li><strong>Speed:</strong> Our app was slow, and when I profiled it, I found that XML de-serialization was eating up most of our time.</li>
+                </ol>
+
+                <p>XML serialization is notoriously slow in .NET. After doing some research (and reading this <a href="http://maxondev.com/serialization-performance-comparison-c-net-formats-frameworks-xmldatacontractserializer-xmlserializer-binaryformatter-json-newtonsoft-servicestack-text/" target="_blank" style="color: var(--accent-color);">benchmark</a>), I decided to move us over to <strong>ProtoBuf.Net</strong>. It’s a binary formatter based on Google’s Protocol Buffers, and it’s significantly faster than XML.</p>
+
+                <p>We also took the opportunity to move the cache files to a dedicated file server and offload the creation to a background thread. The actual implementation was surprisingly simple.</p>
+
                 <p>
                     Changing the application to ProtoBuf.Net protocol was pretty straightforward.
                 </p>

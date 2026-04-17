@@ -182,13 +182,10 @@
             </header>
 
             <div class="post-content">
-                <p>
-                    Encryption at the database level is a critical tool for protecting sensitive data. A common implementation strategy is to encrypt specific columns containing sensitive information—such as credit card numbers or dates of birth. However, this security comes with a performance cost: encrypting and decrypting data is highly CPU-intensive.
-                </p>
 
-                <p>
-                    The real challenge arises when these encrypted columns are used in primary keys, JOIN conditions, or WHERE clauses. In these scenarios, the database engine often has to decrypt the entire column to perform comparisons, leading to significant latency and resource consumption.
-                </p>
+                <p>I’ve always seen database encryption as a bit of a double-edged sword. It’s great for security, but it can absolutely kill performance if you’re not careful. We were working on a project where we had to encrypt sensitive columns like Social Security Numbers (SSNs), and it didn’t take long for us to realize that the database was struggling just to do simple lookups.</p>
+
+                <p>The problem is that once a column is encrypted, the database can't use standard indexes to find a specific row. It has to decrypt every single value in that column just to see if it matches your search criteria. It's a massive CPU drain and makes simple JOINs or WHERE clauses incredibly slow.</p>
 
                 <p>
                     We encountered a major performance bottleneck in a previous project involving Social Security Numbers (SSNs). Database SELECT operations filtered by SSN were extremely slow because the engine was performing full-column decryptions for every comparison. Looking at the execution metrics below, the initial query required over 4,400 logical reads and took 302 milliseconds to complete.

@@ -11,7 +11,10 @@ export default defineConfig({
         blog_recommendations: resolve(__dirname, 'personalized-health-recommendations.html'),
         blog_config_editor: resolve(__dirname, 'config-editor-technical-challenge.html'),
         blog_caas: resolve(__dirname, 'caas-orchestration-spel.html'),
+        blog_protobuf: resolve(__dirname, 'use-protobuf-net-to-improve-serialization-performance.html'),
+        blog_sql_perf: resolve(__dirname, 'improving-sql-performance-encrypted-columns.html'),
       },
     },
   },
 });
+
