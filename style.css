@@ -268,3 +268,27 @@ section {
     font-size: 3rem;
   }
 }
+
+/* Mermaid Diagrams */
+.mermaid-container {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 12px;
+    padding: 2rem;
+    margin: 2rem 0;
+    border: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+}
+
+.mermaid {
+    background: transparent !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+/* Ensure the SVG scales correctly */
+.mermaid svg {
+    max-width: 100%;
+    height: auto;
+}
+

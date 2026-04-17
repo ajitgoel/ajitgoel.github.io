@@ -216,8 +216,29 @@ using (var file = File.Create("person.bin"))
 Person person;
 using (var file = File.OpenRead("person.bin")) 
 {
-    person = Serializer.Deserialize&lt;Person&gt;(file);
+    person = Serializer.Deserialize<Person>(file);
 }</code></pre>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+sequenceDiagram
+    participant App as Application
+    participant PB as ProtoBuf.Net
+    participant FS as File System
+    
+    Note over App, FS: Serialization Process
+    App->>PB: Serialize(Object)
+    PB->>PB: Encode to Binary
+    PB->>FS: Write binary data to disk
+    
+    Note over App, FS: Deserialization Process
+    App->>FS: Read binary data
+    FS->>PB: Streamed data
+    PB->>PB: Decode Binary
+    PB->>App: Return deserialized Object
+                    </pre>
+                </div>
+
 
                 <h2>Results</h2>
                 <p>

@@ -1,3 +1,13 @@
+import mermaid from 'mermaid';
+
+// Initialize Mermaid
+mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    securityLevel: 'loose',
+    fontFamily: 'Inter, system-ui, sans-serif',
+});
+
 // Scroll Reveal Animation
 const observerOptions = {
     threshold: 0.1,
@@ -43,3 +53,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
