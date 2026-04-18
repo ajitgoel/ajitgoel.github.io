@@ -532,14 +532,64 @@ pre.mermaid {
     width: 90%;
     height: 90%;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    gap: 1rem;
     position: relative;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 18px;
+    padding: 1.25rem;
+    overflow: hidden;
+}
+
+.modal-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.modal-zoom-btn,
+.modal-reset-btn {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: var(--accent-color);
+    border-radius: 10px;
+    min-width: 44px;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-zoom-btn:hover,
+.modal-reset-btn:hover {
+    background: rgba(56, 189, 248, 0.24);
+    color: #e0f2fe;
+}
+
+.modal-diagram-viewport {
+    flex: 1;
+    overflow: auto;
+    border-radius: 14px;
+    background: rgba(2, 6, 23, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    padding: 1.5rem;
+    scrollbar-gutter: stable both-edges;
+}
+
+.modal-diagram-stage {
+    min-width: 100%;
+    min-height: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
 }
 
 .modal-content svg {
-    max-width: 100%;
-    max-height: 100%;
+    display: block;
+    max-width: none;
+    max-height: none;
 }
 
 .close-modal {
@@ -556,4 +606,25 @@ pre.mermaid {
 .close-modal:hover {
     opacity: 1;
     transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: calc(100% - 2rem);
+        height: calc(100% - 2rem);
+        padding: 1rem;
+    }
+
+    .modal-toolbar {
+        justify-content: stretch;
+    }
+
+    .modal-zoom-btn,
+    .modal-reset-btn {
+        flex: 1;
+    }
+
+    .modal-diagram-viewport {
+        padding: 1rem;
+    }
 }
