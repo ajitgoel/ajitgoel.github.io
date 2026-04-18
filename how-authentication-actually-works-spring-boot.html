@@ -56,13 +56,13 @@
                 <p>The point of the flow is simple. Let the identity provider handle login, let Spring Boot validate identity and authorization, and keep users signed in without asking them to re-enter credentials every few minutes.</p>
 
                 <div class="series-inline-list">
-                    <span class="series-pill">Client app: browser SPA or mobile app</span>
+                    <span class="series-pill">Client app: browser single-page application or mobile app</span>
                     <span class="series-pill">Middle tier: Java Spring Boot backend</span>
-                    <span class="series-pill">Auth provider: Okta, Google, or another OIDC provider</span>
+                    <span class="series-pill">Auth provider: Okta, Google, or another OpenID Connect provider</span>
                 </div>
 
                 <h2>How the bearer token is generated</h2>
-                <p>The normal pattern here is the Authorization Code flow with PKCE. The important detail is that the user logs in at the provider, not on your backend, and not inside your SPA.</p>
+                <p>The normal pattern here is the Authorization Code flow with PKCE, short for Proof Key for Code Exchange. The important detail is that the user logs in at the provider, not on your backend, and not inside your single-page application.</p>
 
                 <ol>
                     <li>The client app redirects the user to the provider's hosted login page.</li>
@@ -72,7 +72,7 @@
                     <li>The provider returns an access token, a refresh token, and often an ID token.</li>
                 </ol>
 
-                <p>The access token is the bearer token people usually mean. In many setups it is a JWT that says who the user is, which scopes they have, and when the token expires.</p>
+                <p>The access token is the bearer token people usually mean. In many setups it is a JWT, short for JSON Web Token, that says who the user is, which scopes they have, and when the token expires.</p>
 
                 <pre class="series-code"><code>POST /oauth/token
 grant_type=authorization_code
@@ -94,13 +94,44 @@ response:
                 <div class="series-card-grid">
                     <div class="series-card">
                         <h3>Browser app</h3>
-                        <p>I usually prefer an <code>HttpOnly</code>, <code>Secure</code> cookie. The browser sends it automatically, and JavaScript cannot read it. That cuts down the XSS blast radius.</p>
+                        <p>I usually prefer an <code>HttpOnly</code>, <code>Secure</code> cookie. The browser sends it automatically, and JavaScript cannot read it. That cuts down the cross-site scripting, or XSS, blast radius.</p>
                     </div>
                     <div class="series-card">
                         <h3>Native or mobile app</h3>
-                        <p>The app stores the access token and refresh token in secure OS storage like Keychain or Keystore, then sets the <code>Authorization: Bearer &lt;token&gt;</code> header on API calls.</p>
+                        <p>The app stores the access token and refresh token in secure OS storage like Keychain or Keystore, then sets the <code>Authorization: Bearer &lt;token&gt;</code> header on API calls to the application programming interface, or API.</p>
                     </div>
                 </div>
+
+                <p>It helps to separate cookie types from cookie attributes, because people often mix those up in design reviews.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Session cookie</h3>
+                        <p>This usually disappears when the browser session ends. It is a good fit when you want the browser to hold only a short-lived session identifier.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Persistent cookie</h3>
+                        <p>This includes an expiration time or max age, so it survives browser restarts. Teams use it for remember-me behavior, but you should be careful with long-lived auth state.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>HttpOnly cookie</h3>
+                        <p>JavaScript cannot read it. That does not stop every attack, but it does make token theft via XSS much harder.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Secure cookie</h3>
+                        <p>The browser only sends it over HTTPS. If a cookie carries session or token state, this should be non-negotiable in production.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>SameSite cookie</h3>
+                        <p>This controls when the browser sends the cookie on cross-site requests. <code>Strict</code>, <code>Lax</code>, and <code>None</code> are the settings you will see most often when dealing with login redirects and cross-site request forgery protection.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Domain and path scoped cookie</h3>
+                        <p>These are not separate cookie types, but they matter. They limit where the browser will send the cookie, which helps keep auth state from leaking to the wrong subdomain or route.</p>
+                    </div>
+                </div>
+
+                <p>For a Spring Boot web app, the common choice is a short-lived session or access cookie marked <code>HttpOnly</code>, <code>Secure</code>, and usually <code>SameSite=Lax</code> unless your cross-site login flow requires something else.</p>
 
                 <p>The client does not need to understand token internals. It just needs to store the token in the right place and send it back safely.</p>
 
@@ -109,7 +140,7 @@ response:
 
                 <ol>
                     <li>Spring Security extracts the token or session context from the request.</li>
-                    <li>It validates the token signature using the provider's public keys from JWKS.</li>
+                    <li>It validates the token signature using the provider's public keys from JWKS, short for JSON Web Key Set.</li>
                     <li>It checks expiry, issuer, audience, and scopes or roles.</li>
                     <li>It populates the <code>SecurityContext</code> so controllers and services know who the caller is.</li>
                 </ol>
@@ -210,6 +241,9 @@ sequenceDiagram
 
                 <h3>Does Spring Boot call Okta or Google on every request?</h3>
                 <p>Usually no. Most setups validate JWTs locally with cached provider keys. Token introspection exists, but it is the exception rather than the normal path.</p>
+
+                <h3>What do the acronyms in this flow mean?</h3>
+                <p>PKCE means Proof Key for Code Exchange. JWT means JSON Web Token. JWKS means JSON Web Key Set. SPA means single-page application. OIDC means OpenID Connect. MFA means multi-factor authentication. API means application programming interface. XSS means cross-site scripting.</p>
 
                 <h3>Should a Spring Boot app be stateless if it uses refresh tokens?</h3>
                 <p>Not always. If the backend stores refresh tokens securely for browser sessions, you now have state. That is often a good trade when you want tighter control over refresh and revocation behavior.</p>
