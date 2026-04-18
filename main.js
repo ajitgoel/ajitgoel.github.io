@@ -20,33 +20,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" class="modal-reset-btn" data-zoom-action="reset">Reset</button>
             </div>
             <div class="modal-diagram-viewport">
-                <div class="modal-diagram-stage"></div>
+                <div class="modal-diagram-stage">
+                    <div class="modal-diagram-inner"></div>
+                </div>
             </div>
         </div>
         <div class="close-modal">&times;</div>
     `;
     document.body.appendChild(modal);
 
-    const modalStage = modal.querySelector('.modal-diagram-stage');
+    const modalViewport = modal.querySelector('.modal-diagram-viewport');
+    const modalInner = modal.querySelector('.modal-diagram-inner');
     const zoomControls = modal.querySelectorAll('[data-zoom-action]');
     const closeBtn = modal.querySelector('.close-modal');
     let activeModalSvg = null;
     let modalBaseWidth = 0;
+    let modalBaseHeight = 0;
     let modalZoom = 1;
 
-    const getSvgWidth = (svg) => {
+    const getSvgDimensions = (svg) => {
+        const renderedRect = svg.getBoundingClientRect();
         const viewBoxWidth = svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal.width : 0;
-        if (viewBoxWidth) {
-            return viewBoxWidth;
-        }
+        const viewBoxHeight = svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal.height : 0;
 
         const widthAttr = parseFloat(svg.getAttribute('width'));
-        if (!Number.isNaN(widthAttr) && widthAttr > 0) {
-            return widthAttr;
-        }
+        const heightAttr = parseFloat(svg.getAttribute('height'));
 
-        const renderedWidth = svg.getBoundingClientRect().width;
-        return renderedWidth || 1200;
+        const width =
+            viewBoxWidth ||
+            (!Number.isNaN(widthAttr) && widthAttr > 0 ? widthAttr : 0) ||
+            renderedRect.width ||
+            1200;
+
+        const height =
+            viewBoxHeight ||
+            (!Number.isNaN(heightAttr) && heightAttr > 0 ? heightAttr : 0) ||
+            renderedRect.height ||
+            800;
+
+        return { width, height };
     };
 
     const applyModalZoom = () => {
@@ -54,18 +66,33 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        activeModalSvg.style.width = `${modalBaseWidth * modalZoom}px`;
-        activeModalSvg.style.maxWidth = 'none';
-        activeModalSvg.style.height = 'auto';
+        modalInner.style.width = `${modalBaseWidth * modalZoom}px`;
+        modalInner.style.height = `${modalBaseHeight * modalZoom}px`;
+        activeModalSvg.style.width = '100%';
+        activeModalSvg.style.height = '100%';
+    };
+
+    const setInitialModalZoom = () => {
+        const viewportWidth = modalViewport.clientWidth || window.innerWidth * 0.9;
+        const viewportHeight = modalViewport.clientHeight || window.innerHeight * 0.9;
+        const fitWidth = viewportWidth / modalBaseWidth;
+        const fitHeight = viewportHeight / modalBaseHeight;
+        const fitZoom = Math.min(fitWidth, fitHeight, 1);
+
+        modalZoom = Math.max(fitZoom, 0.5);
+        applyModalZoom();
     };
 
     const closeModal = () => {
         modal.classList.remove('active');
         setTimeout(() => {
             modal.style.display = 'none';
-            modalStage.innerHTML = '';
+            modalInner.innerHTML = '';
+            modalInner.style.width = '';
+            modalInner.style.height = '';
             activeModalSvg = null;
             modalBaseWidth = 0;
+            modalBaseHeight = 0;
             modalZoom = 1;
         }, 300);
     };
@@ -158,13 +185,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const svg = container.querySelector('.mermaid svg');
             if (svg) {
                 activeModalSvg = svg.cloneNode(true);
-                modalBaseWidth = getSvgWidth(svg);
-                modalZoom = 1;
-                modalStage.innerHTML = '';
-                modalStage.appendChild(activeModalSvg);
-                applyModalZoom();
+                const { width, height } = getSvgDimensions(svg);
+                modalBaseWidth = width;
+                modalBaseHeight = height;
+                modalInner.innerHTML = '';
+                modalInner.appendChild(activeModalSvg);
                 modal.style.display = 'flex';
-                setTimeout(() => modal.classList.add('active'), 10);
+                requestAnimationFrame(() => {
+                    setInitialModalZoom();
+                    modal.classList.add('active');
+                });
             }
         });
     });

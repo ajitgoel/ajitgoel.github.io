@@ -586,6 +586,10 @@ pre.mermaid {
     align-items: flex-start;
 }
 
+.modal-diagram-inner {
+    flex: 0 0 auto;
+}
+
 .modal-content svg {
     display: block;
     max-width: none;

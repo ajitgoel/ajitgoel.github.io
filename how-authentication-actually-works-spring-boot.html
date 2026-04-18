@@ -145,12 +145,59 @@ response:
                     <li>It populates the <code>SecurityContext</code> so controllers and services know who the caller is.</li>
                 </ol>
 
+                <h3>How the SecurityContext gets populated</h3>
+                <p>In a typical Spring Security setup, this happens inside the filter chain before your controller runs. A security filter reads the bearer token or session, authenticates it, builds an <code>Authentication</code> object, and stores that object in <code>SecurityContextHolder</code>.</p>
+
+                <pre class="series-code"><code>SecurityContext context = SecurityContextHolder.createEmptyContext();
+Authentication authentication =
+    new UsernamePasswordAuthenticationToken(principal, null, authorities);
+
+context.setAuthentication(authentication);
+SecurityContextHolder.setContext(context);</code></pre>
+
+                <p>You usually do not write that code yourself for OAuth 2.0 resource server setups. Spring's built-in filters do it for you after a token is validated. For JWT-based auth, that is commonly the <code>BearerTokenAuthenticationFilter</code> working with a <code>JwtAuthenticationProvider</code>. If you use session-based login, another filter restores the authenticated user from the session and puts it back into the context for that request.</p>
+
+                <p>The important detail is scope. The <code>SecurityContext</code> is request-bound in normal web apps. It exists so downstream code handling that same request can ask, "Who is calling me, and what are they allowed to do?"</p>
+
+                <h3>How different application layers use it</h3>
+                <p>Controllers usually use it to get caller identity or to let Spring enforce coarse-grained access rules before business logic runs.</p>
+
                 <pre class="series-code"><code>@GetMapping("/api/orders")
 @PreAuthorize("hasRole('PHARMACY_USER')")
 public List&lt;OrderDto&gt; getOrders(Authentication authentication) {
     String subject = authentication.getName();
     return orderService.getOrdersForUser(subject);
 }</code></pre>
+
+                <p>Services use it for business-level authorization. This is where you check things like whether a pharmacist can view any order, but a patient can only view their own order. You can pass the caller identity down explicitly, or read it from the context when that makes the code easier to follow.</p>
+
+                <pre class="series-code"><code>@Service
+public class OrderService {
+
+    @PreAuthorize("hasRole('PHARMACY_USER') or hasRole('PATIENT')")
+    public List&lt;OrderDto&gt; getOrdersForCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String subject = auth.getName();
+        return orderRepository.findBySubject(subject);
+    }
+}</code></pre>
+
+                <p>Repository and database layers should usually not depend directly on <code>SecurityContext</code>. I try to keep the security decision in the controller or service layer, then pass a concrete user ID, tenant ID, or role-derived filter into the repository. That keeps data access easier to test and easier to reason about.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Controller layer</h3>
+                        <p>Read the principal, return the right response shape, and apply endpoint-level rules with annotations like <code>@PreAuthorize</code>.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Service layer</h3>
+                        <p>Apply business authorization, ownership checks, tenant boundaries, and role-specific behavior.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Repository layer</h3>
+                        <p>Stay focused on data access. Prefer receiving filtered parameters instead of reaching into the security context directly.</p>
+                    </div>
+                </div>
 
                 <p>If validation fails, the backend should return <code>401 Unauthorized</code> or <code>403 Forbidden</code>. It should not call downstream services and hope for the best.</p>
 
