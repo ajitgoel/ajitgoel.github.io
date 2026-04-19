@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How Authentication Actually Works in a Spring Boot App | Ajit Goel</title>
+    <meta name="description" content="A practical walkthrough of how login, access tokens, refresh tokens, and token validation work between a client app, Spring Boot backend, and Okta or Google.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+  <script type="module" crossorigin src="/assets/main-BOcHviRN.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-DzKoaWCy.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="series-post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="series-post-header reveal">
+                <span class="series-eyebrow">Spring Boot Authentication</span>
+                <h1 class="series-post-title">How Authentication Actually Works in a Spring Boot App</h1>
+                <div class="series-post-meta">
+                    <span>April 18, 2026</span>
+                    <span>•</span>
+                    <span>8 min read</span>
+                    <span>•</span>
+                    <span>Security Architecture</span>
+                </div>
+            </header>
+
+            <div class="series-post-content reveal">
+                <p class="series-lead">I have seen a lot of teams use Okta or Google login for months before everyone on the project agrees on one basic question: where does the bearer token actually come from, where does it live, and who is responsible for refreshing it? This post is the straight answer I wish I had the first time I had to explain it to a backend team and a frontend team in the same room.</p>
+
+                <h2>What problem this authentication flow solves</h2>
+                <p>Most modern apps split into three pieces: a browser or mobile client, a Spring Boot middle tier, and an identity provider like Okta or Google. The client should not handle user passwords directly, and your backend should not blindly trust whatever token shows up on the wire.</p>
+
+                <p>The point of the flow is simple. Let the identity provider handle login, let Spring Boot validate identity and authorization, and keep users signed in without asking them to re-enter credentials every few minutes.</p>
+
+                <div class="series-inline-list">
+                    <span class="series-pill">Client app: browser single-page application or mobile app</span>
+                    <span class="series-pill">Middle tier: Java Spring Boot backend</span>
+                    <span class="series-pill">Auth provider: Okta, Google, or another OpenID Connect provider</span>
+                </div>
+
+                <h2>How the bearer token is generated</h2>
+                <p>The normal pattern here is the Authorization Code flow with PKCE, short for Proof Key for Code Exchange. The important detail is that the user logs in at the provider, not on your backend, and not inside your single-page application.</p>
+
+                <ol>
+                    <li>The client app redirects the user to the provider's hosted login page.</li>
+                    <li>The user signs in there, which keeps credentials out of your application stack.</li>
+                    <li>The provider redirects back with a short-lived authorization code.</li>
+                    <li>Your Spring Boot backend exchanges that code at the token endpoint.</li>
+                    <li>The provider returns an access token, a refresh token, and often an ID token.</li>
+                </ol>
+
+                <p>The access token is the bearer token people usually mean. In many setups it is a JWT, short for JSON Web Token, that says who the user is, which scopes they have, and when the token expires.</p>
+
+                <pre class="series-code"><code>POST /oauth/token
+grant_type=authorization_code
+code=AUTH_CODE
+code_verifier=PKCE_VERIFIER
+client_id=YOUR_CLIENT_ID
+
+response:
+{
+  "access_token": "eyJ...",
+  "refresh_token": "def50200...",
+  "id_token": "eyJ...",
+  "expires_in": 900
+}</code></pre>
+
+                <h2>Where the token is stored on the client</h2>
+                <p>This is where teams usually get tripped up. The storage model is different for browser apps and native apps, and that difference matters for security.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Browser app</h3>
+                        <p>I usually prefer an <code>HttpOnly</code>, <code>Secure</code> cookie. The browser sends it automatically, and JavaScript cannot read it. That cuts down the cross-site scripting, or XSS, blast radius.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Native or mobile app</h3>
+                        <p>The app stores the access token and refresh token in secure OS storage like Keychain or Keystore, then sets the <code>Authorization: Bearer &lt;token&gt;</code> header on API calls to the application programming interface, or API.</p>
+                    </div>
+                </div>
+
+                <p>It helps to separate cookie types from cookie attributes, because people often mix those up in design reviews.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Session cookie</h3>
+                        <p>This usually disappears when the browser session ends. It is a good fit when you want the browser to hold only a short-lived session identifier.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Persistent cookie</h3>
+                        <p>This includes an expiration time or max age, so it survives browser restarts. Teams use it for remember-me behavior, but you should be careful with long-lived auth state.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>HttpOnly cookie</h3>
+                        <p>JavaScript cannot read it. That does not stop every attack, but it does make token theft via XSS much harder.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Secure cookie</h3>
+                        <p>The browser only sends it over HTTPS. If a cookie carries session or token state, this should be non-negotiable in production.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>SameSite cookie</h3>
+                        <p>This controls when the browser sends the cookie on cross-site requests. <code>Strict</code>, <code>Lax</code>, and <code>None</code> are the settings you will see most often when dealing with login redirects and cross-site request forgery protection.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Domain and path scoped cookie</h3>
+                        <p>These are not separate cookie types, but they matter. They limit where the browser will send the cookie, which helps keep auth state from leaking to the wrong subdomain or route.</p>
+                    </div>
+                </div>
+
+                <p>For a Spring Boot web app, the common choice is a short-lived session or access cookie marked <code>HttpOnly</code>, <code>Secure</code>, and usually <code>SameSite=Lax</code> unless your cross-site login flow requires something else.</p>
+
+                <p>The client does not need to understand token internals. It just needs to store the token in the right place and send it back safely.</p>
+
+                <h2>How Spring Boot validates authentication on every request</h2>
+                <p>Your Spring Boot API acts as the resource server. Every incoming request has to prove identity again, either with a bearer token header or with a session cookie that maps back to server-side token state.</p>
+
+                <ol>
+                    <li>Spring Security extracts the token or session context from the request.</li>
+                    <li>It validates the token signature using the provider's public keys from JWKS, short for JSON Web Key Set.</li>
+                    <li>It checks expiry, issuer, audience, and scopes or roles.</li>
+                    <li>It populates the <code>SecurityContext</code> so controllers and services know who the caller is.</li>
+                </ol>
+
+                <h3>How the SecurityContext gets populated</h3>
+                <p>In a typical Spring Security setup, this happens inside the filter chain before your controller runs. A security filter reads the bearer token or session, authenticates it, builds an <code>Authentication</code> object, and stores that object in <code>SecurityContextHolder</code>.</p>
+
+                <pre class="series-code"><code>SecurityContext context = SecurityContextHolder.createEmptyContext();
+Authentication authentication =
+    new UsernamePasswordAuthenticationToken(principal, null, authorities);
+
+context.setAuthentication(authentication);
+SecurityContextHolder.setContext(context);</code></pre>
+
+                <p>You usually do not write that code yourself for OAuth 2.0 resource server setups. Spring's built-in filters do it for you after a token is validated. For JWT-based auth, that is commonly the <code>BearerTokenAuthenticationFilter</code> working with a <code>JwtAuthenticationProvider</code>. If you use session-based login, another filter restores the authenticated user from the session and puts it back into the context for that request.</p>
+
+                <p>The important detail is scope. The <code>SecurityContext</code> is request-bound in normal web apps. It exists so downstream code handling that same request can ask, "Who is calling me, and what are they allowed to do?"</p>
+
+                <h3>How different application layers use it</h3>
+                <p>Controllers usually use it to get caller identity or to let Spring enforce coarse-grained access rules before business logic runs.</p>
+
+                <pre class="series-code"><code>@GetMapping("/api/orders")
+@PreAuthorize("hasRole('PHARMACY_USER')")
+public List&lt;OrderDto&gt; getOrders(Authentication authentication) {
+    String subject = authentication.getName();
+    return orderService.getOrdersForUser(subject);
+}</code></pre>
+
+                <p>Services use it for business-level authorization. This is where you check things like whether a pharmacist can view any order, but a patient can only view their own order. You can pass the caller identity down explicitly, or read it from the context when that makes the code easier to follow.</p>
+
+                <pre class="series-code"><code>@Service
+public class OrderService {
+
+    @PreAuthorize("hasRole('PHARMACY_USER') or hasRole('PATIENT')")
+    public List&lt;OrderDto&gt; getOrdersForCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String subject = auth.getName();
+        return orderRepository.findBySubject(subject);
+    }
+}</code></pre>
+
+                <p>Repository and database layers should usually not depend directly on <code>SecurityContext</code>. I try to keep the security decision in the controller or service layer, then pass a concrete user ID, tenant ID, or role-derived filter into the repository. That keeps data access easier to test and easier to reason about.</p>
+
+                <div class="series-card-grid">
+                    <div class="series-card">
+                        <h3>Controller layer</h3>
+                        <p>Read the principal, return the right response shape, and apply endpoint-level rules with annotations like <code>@PreAuthorize</code>.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Service layer</h3>
+                        <p>Apply business authorization, ownership checks, tenant boundaries, and role-specific behavior.</p>
+                    </div>
+                    <div class="series-card">
+                        <h3>Repository layer</h3>
+                        <p>Stay focused on data access. Prefer receiving filtered parameters instead of reaching into the security context directly.</p>
+                    </div>
+                </div>
+
+                <p>If validation fails, the backend should return <code>401 Unauthorized</code> or <code>403 Forbidden</code>. It should not call downstream services and hope for the best.</p>
+
+                <h2>Why refresh tokens exist</h2>
+                <p>Access tokens are intentionally short-lived. That is a feature, not an inconvenience. If someone steals one, the damage window is limited.</p>
+
+                <p>The refresh token is what keeps users signed in. When the access token expires, the client or backend uses the refresh token to ask the provider for a new access token. If the refresh token has also expired or has been revoked, the user has to sign in again.</p>
+
+                <h2>How refresh token rotation works in practice</h2>
+                <p>In a browser-based app, I prefer keeping the refresh token away from JavaScript entirely. The backend stores it securely and ties it to a server-side session. That means the browser only sends an <code>HttpOnly</code> cookie and the backend does the refresh exchange.</p>
+
+                <ol>
+                    <li>The current access token expires.</li>
+                    <li>The client hits a refresh endpoint or retries after a <code>401</code>.</li>
+                    <li>Spring Boot looks up the stored refresh token for that session.</li>
+                    <li>The backend calls the provider with <code>grant_type=refresh_token</code>.</li>
+                    <li>The provider returns a new access token and sometimes a new refresh token.</li>
+                    <li>The backend updates the stored session state and the client continues.</li>
+                </ol>
+
+                <div class="series-note">
+                    <p><strong>The trade-off:</strong> backend-managed refresh tokens are safer for browser apps, but they add server-side session state. If you want fully stateless APIs, you give up some of that control and push more risk to the client.</p>
+                </div>
+
+                <h2>The full authentication sequence, end to end</h2>
+                <p>This is the sequence I usually draw on a whiteboard. I am keeping the detailed diagram intact because this is the part people refer back to when the implementation starts getting fuzzy.</p>
+
+                <div class="mermaid-container reveal">
+                    <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant User as User (Browser / App)
+    participant Client as Client App (SPA / Mobile)
+    participant Backend as Spring Boot API
+    participant OP as Auth Provider (Okta / Google)
+
+    Note over User,OP: INITIAL LOGIN (NO TOKENS YET)
+
+    User->>Client: 1. Clicks "Login"
+    Client->>OP: 2. Redirect to Auth Provider (auth request)
+    User->>OP: 3. Enter username/password, MFA, consent
+    OP-->>Client: 4. Redirect back with auth code
+    Client->>Backend: 5. Send auth code to backend (secure call)
+
+    Note over Backend,OP: TOKEN EXCHANGE (ONE-TIME PER LOGIN)
+
+    Backend->>OP: 6. Exchange auth code + client secret / PKCE for tokens
+    OP-->>Backend: 7. Access token (bearer) + refresh token
+    Backend->>Backend: 8. Store refresh token securely\nmapped to user/session
+    Backend-->>Client: 9. Set HttpOnly secure session cookie\n(session id or short-lived access token)
+
+    Note over Client: TOKEN STORAGE ON CLIENT
+
+    Client->>Client: 10. Browser stores HttpOnly cookie only\n(no refresh token in JS/localStorage)
+
+    Note over Client,Backend: NORMAL API CALLS\n(NO PER-REQUEST CALL TO OKTA/GOOGLE)
+
+    Client->>Backend: 11. Call /api/resource with cookie\nor Authorization: Bearer ACCESS_TOKEN
+    Backend->>Backend: 12. Validate token locally\n(signature, expiry, audience, scopes)
+    Backend-->>Client: 13. Return protected data if valid
+
+    Note over Backend,OP: OPTIONAL INTROSPECTION (RARE)
+
+    Backend->>OP: 14. (Optional) Introspect token at provider
+    OP-->>Backend: 15. Token active / revoked status
+
+    Note over Client,Backend: ACCESS TOKEN EXPIRES
+
+    Client->>Backend: 16. Call /api/refresh (session cookie)
+    Backend->>Backend: 17. Look up stored refresh token\nby user/session
+    Backend->>OP: 18. Use refresh token to get new access token
+    OP-->>Backend: 19. New access token\n(+ maybe new refresh token)
+    Backend->>Backend: 20. Rotate/update stored refresh token\nand session mapping
+    Backend-->>Client: 21. Update HttpOnly cookie / session\nwith new access token
+    Note over Client: 22. Continue calling APIs with new access token
+                    </pre>
+                </div>
+
+                <h2>What I would avoid</h2>
+                <p>I would not put refresh tokens in <code>localStorage</code> for a browser app. I would not skip audience and issuer checks just because the JWT signature validates. I would also avoid treating token refresh as a frontend-only concern when the backend is the one that actually owns the trust boundary.</p>
+
+                <p>I have seen systems where the login story looked fine in demos but broke down under incident pressure because nobody could answer where refresh state lived or how revocation worked. Those details matter.</p>
+
+                <h2>FAQ: common Spring Boot authentication questions</h2>
+
+                <h3>What is the difference between an ID token and an access token?</h3>
+                <p>The ID token describes the authenticated user to the client. The access token is what your API uses to authorize requests. They are not interchangeable.</p>
+
+                <h3>Does Spring Boot call Okta or Google on every request?</h3>
+                <p>Usually no. Most setups validate JWTs locally with cached provider keys. Token introspection exists, but it is the exception rather than the normal path.</p>
+
+                <h3>What do the acronyms in this flow mean?</h3>
+                <p>PKCE means Proof Key for Code Exchange. JWT means JSON Web Token. JWKS means JSON Web Key Set. SPA means single-page application. OIDC means OpenID Connect. MFA means multi-factor authentication. API means application programming interface. XSS means cross-site scripting.</p>
+
+                <h3>Should a Spring Boot app be stateless if it uses refresh tokens?</h3>
+                <p>Not always. If the backend stores refresh tokens securely for browser sessions, you now have state. That is often a good trade when you want tighter control over refresh and revocation behavior.</p>
+
+                <h3>When should the user be forced to log in again?</h3>
+                <p>When the refresh token is expired, revoked, or missing, the refresh flow fails and the user needs a full re-authentication redirect.</p>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
