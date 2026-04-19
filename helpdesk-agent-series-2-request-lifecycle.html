@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Helpdesk Agent, Part 2: Request Lifecycle | Ajit Goel</title>
-    <meta name="description" content="Part 2 of the enterprise helpdesk agent series, following a single request from session startup through the LangGraph loop.">
+    <title>Enterprise Helpdesk Agent, Part 2: The Agent Loop Is a State Machine | Ajit Goel</title>
+    <meta name="description" content="Part 2 of the enterprise helpdesk agent series, following a single request through the LangGraph loop and treating the workflow as an explicit state machine.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +37,7 @@
         <article>
             <header class="series-post-header reveal">
                 <span class="series-eyebrow">Helpdesk Agent Series · Part 2</span>
-                <h1 class="series-post-title">How a Request Moves Through the App</h1>
+                <h1 class="series-post-title">The Agent Loop Is a State Machine</h1>
                 <div class="series-post-meta">
                     <span>April 16, 2026</span>
                     <span>•</span>
@@ -48,9 +48,9 @@
             </header>
 
             <div class="series-post-content reveal">
-                <p class="series-lead">In the first post I talked about the overall shape. Here I want to get more concrete and follow one request from the moment the session starts. This is where the prototype earns its keep, because the code lays out the agent loop in a way that is easy to reason about.</p>
+                <p class="series-lead">If you cannot explain the agent loop as a state machine, you probably do not understand the system well enough to operate it. This prototype is useful because the control flow is explicit: gates, routes, tool execution, and termination conditions are all visible in code.</p>
 
-                <h2>The startup order matters</h2>
+                <h2>The bootstrap path tells you what this system actually depends on</h2>
                 <p><code>main.py</code> does four important things before the user types anything: it boots observability, builds the knowledge base, initializes the tools with the KB handles, and creates a session scope. That startup sequence is not accidental. It means the agent is assembled only after the environment around it is ready.</p>
 
                 <pre class="series-code"><code>setup_observability()
@@ -61,7 +61,15 @@ agent = build_agent(scope)</code></pre>
 
                 <p>I like this because it keeps the dependencies explicit. The downside is that startup work happens per session, which is fine for a demo but not for a shared service. Re-ingesting the KB each time is especially expensive once the document set grows.</p>
 
-                <h2>The first gate is still outside the graph</h2>
+                <p>The other detail worth calling out is that the runtime state is tiny on purpose. The graph is not dragging a giant nested object through every node. It carries just enough to resume the next step.</p>
+
+                <pre class="series-code"><code>class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]
+    pending_tool_call: dict | None
+    hitl_reason: str | None
+    awaiting_human: bool</code></pre>
+
+                <h2>The first security decision happens before the graph gets a vote</h2>
                 <p>After the user enters text, the request hits <code>check_injection()</code> before it reaches LangGraph at all. That gives the app a belt-and-suspenders shape: one security check before the graph, and then another layer of safety later through scoped tool binding and approval gates.</p>
 
                 <div class="mermaid-container reveal">
@@ -85,7 +93,7 @@ sequenceDiagram
                     </pre>
                 </div>
 
-                <h2>How the graph actually behaves</h2>
+                <h2>The graph is small, but it is doing real workflow orchestration</h2>
                 <p><code>agent.py</code> is small, but the structure is solid. There are three real execution nodes:</p>
                 <div class="series-card-grid">
                     <div class="series-card">
@@ -104,14 +112,38 @@ sequenceDiagram
 
                 <p>The routing logic is simple enough that you can inspect it mentally. If the LLM does not ask for a tool, the graph ends. If it asks for a high-stakes tool, the request detours into human approval. Otherwise, the tool runs directly and the graph loops.</p>
 
-                <h2>Why this feels like an agent loop instead of a scripted chain</h2>
+                <pre class="series-code"><code>def tool_router(state: AgentState) -&gt; Literal["run_tool", "hitl_gate", "end"]:
+    last = state["messages"][-1]
+    if not isinstance(last, AIMessage) or not last.tool_calls:
+        return "end"
+    tool_name = last.tool_calls[0]["name"]
+    if scope.requires_hitl(tool_name):
+        return "hitl_gate"
+    return "run_tool"</code></pre>
+
+                <p>That function is doing most of the architectural work in the post. It is where the agent stops being a chat loop and starts behaving like a state machine. If I were reviewing this code in a design doc, this is one of the first blocks I would paste.</p>
+
+                <h2>The loop matters because this is not just retrieval glued to an LLM</h2>
                 <p>The important detail is the loop back from tool execution into the LLM. The graph is not just retrieve once and answer once. It can plan, act, observe the tool result, and then decide what to do next. That is a better fit for real support tasks where the first retrieval step may surface more context, or where a ticket creation action needs a follow-up message to the user.</p>
+
+                <pre class="series-code"><code>graph.add_conditional_edges("agent", tool_router, {
+    "run_tool": "run_tool",
+    "hitl_gate": "hitl_gate",
+    "end": END,
+})
+graph.add_edge("hitl_gate", "run_tool")
+graph.add_conditional_edges("run_tool", after_tool_router, {
+    "agent": "agent",
+    "end": END,
+})</code></pre>
+
+                <p>I like this more than the usual blog-post pseudocode because it shows exactly where control loops back into reasoning and exactly where the workflow can terminate. That becomes important as soon as you add failure handling and resumability.</p>
 
                 <div class="series-note">
                     <p><strong>One architectural win here:</strong> the scope is captured when the graph is built, so disallowed tools are never bound into the model at all. That is stronger than binding every tool and hoping the prompt keeps the model honest.</p>
                 </div>
 
-                <h2>Pros and cons of the current lifecycle design</h2>
+                <h2>This lifecycle is clean locally, but the tradeoffs are obvious</h2>
                 <div class="series-card-grid">
                     <div class="series-card">
                         <h3>What works well</h3>
@@ -131,8 +163,13 @@ sequenceDiagram
                     </div>
                 </div>
 
-                <h2>What I would do next</h2>
+                <h2>The next step is not more agent logic, it is a real runtime</h2>
                 <p>If I were extending this prototype, I would keep the graph structure and change the surrounding runtime. The first upgrade would be replacing terminal input with an external approval queue and resumable state store. The second would be moving startup concerns like KB ingest and tracing bootstrap into service initialization rather than per-user session setup.</p>
+
+                <h2>Where this design breaks under multi-user load</h2>
+                <p>The first break is not the graph logic. It is the fact that the runtime assumes a mostly single-user, single-operator world. The graph checkpointing is in-memory, the approval path blocks on stdin, and session startup eagerly rebuilds dependencies that should be shared service resources.</p>
+
+                <p>Once you have concurrent users, “simple and explicit” turns into head-of-line blocking. One operator cannot sit in a terminal approving actions for many sessions. One process-local checkpoint store cannot be your recovery story. And one per-session KB bootstrap becomes unnecessary repeated work instead of useful clarity.</p>
 
                 <p>That flow only works because retrieval is treated as a first-class step, not an optional add-on. In the next post I’ll go deeper on the knowledge side: how the app builds the KB, scores confidence, and where the PRD asks for a more serious freshness pipeline than the prototype has today.</p>
 

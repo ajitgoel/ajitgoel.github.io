@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Helpdesk Agent, Part 5: HITL, Observability, and the Production Path | Ajit Goel</title>
-    <meta name="description" content="Part 5 of the enterprise helpdesk agent series, covering human approval, audit logging, tracing, and how the prototype should evolve into microservices.">
+    <title>Enterprise Helpdesk Agent, Part 5: The Prototype Holds Up Until You Add Real Users | Ajit Goel</title>
+    <meta name="description" content="Part 5 of the enterprise helpdesk agent series, covering human approval, audit logging, tracing, and where the prototype starts to break once real users and operators enter the system.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +37,7 @@
         <article>
             <header class="series-post-header reveal">
                 <span class="series-eyebrow">Helpdesk Agent Series · Part 5</span>
-                <h1 class="series-post-title">Human Approval, Tracing, and the Jump to Real Services</h1>
+                <h1 class="series-post-title">The Prototype Holds Up Until You Add Real Users</h1>
                 <div class="series-post-meta">
                     <span>April 16, 2026</span>
                     <span>•</span>
@@ -48,10 +48,22 @@
             </header>
 
             <div class="series-post-content reveal">
-                <p class="series-lead">By the time we get here, the app has already screened the input, narrowed the tool surface, and grounded itself on the KB. The last big architectural question is what happens when the model wants to do something with consequences. This is where human-in-the-loop, audit logging, and observability stop being nice extras and become the reliability layer.</p>
+                <p class="series-lead">A prototype can look solid right up until the moment a real user asks it to do something that matters. This is the part of the system where consequences show up: approvals, audit records, fallback behavior, and the operational seams that determine whether the design survives contact with production.</p>
 
-                <h2>How HITL works in the prototype</h2>
+                <h2>The approval path is the first place the system admits side effects are different</h2>
                 <p>In <code>agent.py</code>, write actions like <code>create_ticket</code> and <code>escalate_to_manager</code> route through <code>hitl_gate()</code>. The gate prints the proposed action, shows the tool arguments, waits for approval, and then records the decision through <code>log_hitl_decision()</code>.</p>
+
+                <pre class="series-code"><code>approval = input("\nApprove? (yes/no): ").strip().lower()
+approved = approval in ("yes", "y")
+decision = "approved" if approved else "rejected"
+
+log_hitl_decision(
+    tool_name=tool_call["name"] if tool_call else None,
+    tool_args=tool_call["args"] if tool_call else None,
+    decision=decision,
+    reason=reason,
+    reviewer_role=scope.role
+)</code></pre>
 
                 <div class="mermaid-container reveal">
                     <pre class="mermaid">
@@ -68,8 +80,20 @@ flowchart TD
 
                 <p>That is exactly the right control flow for a prototype. It makes the pause visible, it forces the model to explain what it intends to do, and it captures the approval decision in persistent storage.</p>
 
-                <h2>The audit log is useful, but it is still a prototype choice</h2>
+                <h2>The audit log is good enough to prove the model, not good enough to satisfy an auditor</h2>
                 <p><code>audit.py</code> writes decisions to a local SQLite database with a timestamp, tool name, arguments, reviewer role, and reason. For local development, that is a practical move. For production, it falls short of the PRD target, which explicitly calls for an append-only Postgres store with stronger compliance guarantees.</p>
+
+                <pre class="series-code"><code>cursor.execute("""
+    INSERT INTO audit_log (timestamp, tool_name, tool_args, decision, reason, reviewer_role)
+    VALUES (?, ?, ?, ?, ?, ?)
+""", (
+    datetime.utcnow().isoformat(),
+    tool_name,
+    json.dumps(tool_args) if tool_args else None,
+    decision,
+    reason,
+    reviewer_role
+))</code></pre>
 
                 <div class="series-card-grid">
                     <div class="series-card">
@@ -90,7 +114,7 @@ flowchart TD
                     </div>
                 </div>
 
-                <h2>Observability is one of the stronger parts of the prototype</h2>
+                <h2>Observability is one of the few places this prototype already thinks like production</h2>
                 <p><code>observability.py</code> launches Arize Phoenix and instruments LangChain with OpenTelemetry. That is a good move because agent debugging is usually an observability problem before it is a model problem. If a session goes sideways, you want to know whether retrieval was weak, the model over-called tools, or latency exploded in a specific node.</p>
 
                 <pre class="series-code"><code>tracer_provider = register(
@@ -101,22 +125,112 @@ LangChainInstrumentor().instrument(tracer_provider=tracer_provider)</code></pre>
 
                 <p>The limitation is that tracing is still local and session-centric. The PRD imagines something broader: confidence drift monitoring, latency analysis across services, and a clearer operational picture once the system is split into multiple deployable units.</p>
 
-                <h2>Where the production split should happen</h2>
-                <p>The PRD already points in the right direction. If I were hardening this design, I would split it along responsibility boundaries rather than library boundaries.</p>
+                <p>The fallback path is another place where the implementation is more interesting than the original article gave it credit for. The graph does catch a narrow class of model failures and swaps in a deterministic support response.</p>
+
+                <pre class="series-code"><code>try:
+    response = llm_with_tools.invoke(messages)
+    return {"messages": [response], "awaiting_human": False}
+except Exception as e:
+    err_str = str(e).lower()
+    if "rate_limit" in err_str or "over_quota" in err_str:
+        return {
+            "messages": [AIMessage(content=FALLBACK_RESPONSE)],
+            "awaiting_human": False
+        }</code></pre>
+
+                <p>I would not call that production-grade error handling yet, but I would absolutely call it the right instinct. The code is already biased toward boring failure instead of improvisation, which is exactly what you want in an internal helpdesk flow.</p>
+
+                <h2>The service split is not architecture theater, it is load-bearing</h2>
+                <p>The PRD already points in the right direction. I did not want to paraphrase that part too much, because the service boundaries are one of the most useful things in the whole document.</p>
+
+                <table class="series-table">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Component Responsibility</th>
+                            <th>Communications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Gateway / Security</strong></td>
+                            <td>Prompt Injection (PIG), JWT Auth, and Entitlements (Okta/OPA).</td>
+                            <td>Synchronous REST / gRPC</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Agent Orchestrator</strong></td>
+                            <td>Multi-step reasoning (LangGraph), Tool steering, and State Management.</td>
+                            <td>Websockets / Async REST</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Knowledge (RAG)</strong></td>
+                            <td>ChromaDB retrieval, Confidence scoring, and Ingestion (KFP).</td>
+                            <td>Internal API</td>
+                        </tr>
+                        <tr>
+                            <td><strong>HITL Service</strong></td>
+                            <td>Approval Dashboard, State Checkpointing (Redis), and Audit Logging.</td>
+                            <td>Event-driven (Webhooks/MQ)</td>
+                        </tr>
+                    </tbody>
+                </table>
 
                 <div class="mermaid-container reveal">
                     <pre class="mermaid">
-flowchart LR
-    User["Employee"] --> Gateway["Gateway and security service"]
-    Gateway --> Orchestrator["Agent orchestrator"]
-    Orchestrator --> Knowledge["Knowledge service"]
-    Orchestrator --> HITL["Approval service"]
-    HITL --> Audit["Audit store"]
-    Orchestrator --> Tools["Internal tool adapters"]
-    Gateway -.-> Trace["Central tracing"]
-    Orchestrator -.-> Trace
-    Knowledge -.-> Trace
-    HITL -.-> Trace
+graph TD
+    %% Entry Point
+    User(["👤 User"]) --> Gateway
+
+    subgraph SG_GW ["🛡️ SECURITY & AUTH GATEWAY"]
+        Gateway[API Gateway] --> JWT_Val[JWT Validation]
+        JWT_Val --> PIG_Service[Prompt Injection Guard]
+        PIG_Service --> Entitlements[Entitlement Lookup<br>Okta FGA / OPA]
+    end
+
+    subgraph SC_CORE ["🤖 AGENT CORE SERVICE"]
+        Orchestrator["Graph Orchestrator<br>(LangGraph)"]
+        Tool_Binding[Dynamic Tool Binding]
+        Orchestrator --> Tool_Binding
+    end
+
+    subgraph SC_KNOW ["📚 KNOWLEDGE SERVICE (RAG)"]
+        Search_API[Retrieval API] --> Vector_DB[(Vector DB<br>ChromaDB)]
+        Freshness_Job[Ingestion Worker] --> Vector_DB
+    end
+
+    subgraph SC_HITL ["🙋 HITL SERVICE"]
+        Pending_Queue[Approval Queue]
+        State_Checkpoint[(State Persistence<br>Postgres/Redis)]
+        Audit_Log[("📁 Archive Event Log")]
+        
+        Pending_Queue --> State_Checkpoint
+        State_Checkpoint --> Audit_Log
+    end
+
+    %% Communication Flow
+    Entitlements -->|Authorized & Clean| Orchestrator
+    Orchestrator &lt;--&gt;|Context Retrieval| Search_API
+    Orchestrator -->|High-Stakes Tool| Pending_Queue
+    
+    %% Post-Approval Signal
+    Human_Reviewer(["👔 Supervisor"]) --> Pending_Queue
+    Pending_Queue -->|Resume Signal| Orchestrator
+    
+    %% Execution & Final Output
+    Orchestrator --> Tools[Tools Execution]
+    Orchestrator --> Response(["📄 Final Response"])
+
+    %% Global Observability
+    OBS[["🔭 Centralized Tracing<br>(Arize Phoenix)"]]
+    Orchestrator -.-> OBS
+    Search_API -.-> OBS
+    Gateway -.-> OBS
+
+    %% Styling Boundaries
+    style SG_GW fill:#e1f5fe,stroke:#01579b
+    style SC_CORE fill:#fff3e0,stroke:#e65100
+    style SC_KNOW fill:#e8f5e9,stroke:#1b5e20
+    style SC_HITL fill:#f3e5f5,stroke:#4a148c
                     </pre>
                 </div>
 
@@ -128,8 +242,13 @@ flowchart LR
                     <li><strong>HITL service:</strong> own approval queue, reviewer UX, and durable audit logging.</li>
                 </ul>
 
-                <h2>The biggest thing I would improve</h2>
+                <h2>If I changed one thing first, it would be the approval runtime</h2>
                 <p>The current approval path is still synchronous and terminal-driven. That is the first thing I would replace. A real agent should be able to suspend state, emit an approval event, and resume when a reviewer approves from a separate interface. The PRD hints at exactly that, and the architecture becomes much cleaner once the orchestrator does not have to block on stdin.</p>
+
+                <h2>Where this runtime breaks under multi-user load</h2>
+                <p>The approval path is the first obvious break, but it is not the only one. Process-local tracing bootstrap, local checkpointing assumptions, and synchronous tool-approval coordination all become harder once you have many concurrent sessions and more than one reviewer. The architecture still makes sense, but the runtime stops matching the traffic pattern.</p>
+
+                <p>This is why I like the microservice decomposition in the PRD. It is not decomposition for its own sake. It is a recognition that approval, retrieval, orchestration, and policy evaluation will scale differently, fail differently, and need different operators. The prototype is good because it makes those seams visible early. It stops being enough once those seams need to carry real load.</p>
 
                 <div class="series-note">
                     <p><strong>My overall take:</strong> this repo is a good prototype because it forces the right conversations early. It does not pretend a helpdesk agent is only an LLM problem. It treats retrieval, permissions, approvals, and tracing as part of the product. That is the right mindset if the goal is to build something a company could trust.</p>

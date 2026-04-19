@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Helpdesk Agent, Part 1: From PRD to Prototype | Ajit Goel</title>
-    <meta name="description" content="Part 1 of a blog series walking through an enterprise IT helpdesk agent, starting from the PRD and the first architecture decisions in the prototype.">
+    <title>Enterprise Helpdesk Agent, Part 1: A Prototype That Keeps the Hard Parts In | Ajit Goel</title>
+    <meta name="description" content="Part 1 of a blog series on an enterprise IT helpdesk agent, focusing on why this prototype is useful precisely because it keeps retrieval, approvals, and failure paths visible.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +37,7 @@
         <article>
             <header class="series-post-header reveal">
                 <span class="series-eyebrow">Helpdesk Agent Series · Part 1</span>
-                <h1 class="series-post-title">From PRD to Prototype</h1>
+                <h1 class="series-post-title">A Prototype That Keeps the Hard Parts In</h1>
                 <div class="series-post-meta">
                     <span>April 16, 2026</span>
                     <span>•</span>
@@ -48,11 +48,11 @@
             </header>
 
             <div class="series-post-content reveal">
-                <p class="series-lead">This app is trying to do something a lot of internal AI demos skip: answer employee IT questions without pretending security, approvals, and failure modes do not exist. The PRD is pretty clear about that. It is not just a chatbot. It is an IT helpdesk agent with retrieval, guardrails, human approval, observability, and a path to a production service split.</p>
+                <p class="series-lead">Most agent demos get easier by deleting the parts that make production systems hard. This prototype does the opposite. It keeps retrieval quality, tool scoping, approval gates, auditability, and fallback behavior in the design from day one, which is exactly why it is worth looking at.</p>
 
                 <p>I like that framing because it forces the right conversation early. If an agent can create tickets, escalate issues, and touch company workflows, architecture matters more than prompt polish. The interesting part of this repo is how it translates that bigger enterprise story into a small Python prototype.</p>
 
-                <h2>What the PRD is really asking for</h2>
+                <h2>This PRD is really asking for a control plane, not a chatbot</h2>
                 <p>The PRD lays out four big ideas that drive the rest of the design:</p>
                 <div class="series-card-grid">
                     <div class="series-card">
@@ -75,40 +75,142 @@
 
                 <p>That is a sensible enterprise baseline. It also means the architecture has to carry a lot more than a simple <code>user -&gt; LLM -&gt; answer</code> loop.</p>
 
-                <h2>What the code actually implements today</h2>
+                <h2>The code already commits to real architectural boundaries</h2>
                 <p>The current repo is still a prototype, but it already has the right bones:</p>
                 <div class="series-inline-list">
-                    <span class="series-pill">CLI session runner in <code>main.py</code></span>
-                    <span class="series-pill">LangGraph loop in <code>agent.py</code></span>
-                    <span class="series-pill">Chroma-backed KB search in <code>tools.py</code></span>
-                    <span class="series-pill">Prompt injection checks in <code>guardrails.py</code></span>
-                    <span class="series-pill">Role and session tool narrowing in <code>tool_scoping.py</code></span>
-                    <span class="series-pill">Approval logging in <code>audit.py</code></span>
-                    <span class="series-pill">Phoenix tracing in <code>observability.py</code></span>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/main.py" target="_blank" rel="noopener noreferrer">CLI session runner in <code>main.py</code></a>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/agent.py" target="_blank" rel="noopener noreferrer">LangGraph loop in <code>agent.py</code></a>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/tools.py" target="_blank" rel="noopener noreferrer">Chroma-backed KB search in <code>tools.py</code></a>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/guardrails.py" target="_blank" rel="noopener noreferrer">Prompt injection checks in <code>guardrails.py</code></a>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/tool_scoping.py" target="_blank" rel="noopener noreferrer">Role and session tool narrowing in <code>tool_scoping.py</code></a>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/audit.py" target="_blank" rel="noopener noreferrer">Approval logging in <code>audit.py</code></a>
+                    <a class="series-pill" href="https://github.com/ajitgoel/ajitgoel.github.io/blob/master/agentic-ai/observability.py" target="_blank" rel="noopener noreferrer">Phoenix tracing in <code>observability.py</code></a>
                 </div>
+
+                <p>The useful part is that those pieces are actually wired together in a pretty disciplined order. The app does not construct a giant agent object and hope the dependencies sort themselves out later. The bootstrap path in <code>main.py</code> makes the runtime assembly visible.</p>
+
+                <pre class="series-code"><code>def run_session(role: str = "analyst", session_tools: set | None = None):
+    setup_observability()
+
+    _, collection, embed_model = build_kb()
+    init_tools(collection, embed_model)
+
+    scope = SessionScope(role=role, session_allowlist=session_tools)
+    agent = build_agent(scope)
+    config = {"configurable": {"thread_id": "session-001"}}</code></pre>
+
+                <p>That matters because it shows the real boundaries of the prototype. Retrieval and tool registration are process-local. Scope is computed before the graph is built. Observability is turned on before the first turn. Those are implementation choices, not just bullets in a PRD.</p>
+
+                <p>The PRD also includes a much more detailed architecture view. I wanted to keep that diagram intact here because it shows the actual control surfaces, not the simplified “agent plus RAG” version people usually stop at.</p>
 
                 <div class="mermaid-container reveal">
                     <pre class="mermaid">
-flowchart TD
-    User["Employee asks for help"] --> Guard["Prompt injection guard"]
-    Guard -->|clean| Scope["Role + session tool scoping"]
-    Guard -->|blocked| Stop["Block and log"]
-    Scope --> Agent["LangGraph agent loop"]
-    Agent --> KB["Search knowledge base first"]
-    KB --> Decision{"Confident enough?"}
-    Decision -->|yes| Action{"Need a tool?"}
-    Decision -->|no| Review["Human review"]
-    Action -->|read-only| Tool["Execute tool"]
-    Action -->|write/escalate| Approval["Supervisor approval"]
-    Approval --> Tool
-    Tool --> Agent
-    Agent --> Response["Final response"]
-    Agent --> Trace["Phoenix trace"]
+graph TD
+    %% Node Definitions
+    User(["👤 Employee / user input"])
+    JWT["🔑 JWT Token<br>(Okta/Azure AD)"]
+    
+    subgraph KFP_Sub ["🔄 KB FRESHNESS PIPELINE"]
+        Note_1["<b>Freshness:</b> Scheduled job re-ingests KB docs.<br>Uses Chunk Versioning v1.x -> v2.x for rollbacks."]
+        Source[(Source Docs)] --> Ingest[Scheduled Ingest]
+        Ingest --> Embed[Chunk & Embed]
+        Embed --> Ver_Store["Versioned Store"]
+    end
+  
+    Ver_Store -.-> SD_Search
+
+    subgraph PIG_Sub ["🛡️ PROMPT INJECTION GUARD"]
+        Note_2["<b>Security:</b> Heuristic & LLM-based scans check for adversarial intent."]
+        HS_Scan[Heuristic scan] --> LC_Class[LLM classifier]
+    end
+
+    subgraph TS_Sub ["🔐 TOOL SCOPING"]
+        Note_3["<b>Identity:</b> Role extracted from JWT maps to a set of allowed tool names."]
+        Note_9["<b>Entitlements:</b> Permissions looked up from Okta FGA / OPA Service."]
+        Note_8["<b>Persistence:</b> Scope cached in Redis for stateless multi-user clustering."]
+        JWT --> Role["Role Extraction"]
+        Role --> Auth_Svc[[Auth Service]]
+        Auth_Svc --> Redis[(Redis Cache)]
+        Redis --> Scope["SessionScope"]
+    end
+
+    subgraph RAG_Sub ["📚 RAG — CHROMADB"]
+        Note_4["<b>Reliability:</b> If ChromaDB is offline, triggers Scripted Fallback."]
+        EQ_Embed[Embed query] --> SD_Search[Vector similarity search]
+        SD_Search -->|KB Empty| FB_1["Scripted Fallback"]
+        Conf_Gate{"Confidence<br/>&ge; threshold?"}
+        SD_Search -->|Found| Conf_Gate
+    end
+
+    subgraph HITL_Sub ["🙋 HUMAN IN THE LOOP"]
+        Note_5["<b>Asynchronous:</b> Agent suspends state to DB while awaiting human approval."]
+        UG_Gate[Uncertainty gate]
+        AG_Gate[Authorization gate]
+        State_DB[(💾 State DB)]
+        UG_Gate --> State_DB
+        AG_Gate --> State_DB
+        Audit_Store[("📁 Audit Log")]
+        State_DB --> Audit_Store
+    end
+
+    subgraph LOOP_Sub ["🤖 LANGGRAPH AGENT LOOP"]
+        Note_7["<b>Follow-up:</b> Flow returns to reasoning node after tool results for next steps."]
+        Note_10["<b>Binding:</b> LLM only sees authorized tools; others are logically invisible."]
+        Scope --> Filter["Filter Tools"]
+        Filter --> Bind["Bind to LLM"]
+        Bind --> MS_Reason["Multi-step reasoning"]
+        TC_Gate{"High-stakes?"}
+        MS_Reason --> TC_Gate
+    end
+
+    subgraph OBS_Sub ["🔭 OBSERVABILITY"]
+        Note_6["<b>Monitoring:</b> Tracking confidence drift to detect KB staleness."]
+        FT_Trace[Full trace] --> LT_Metrics[Latency + Tokens]
+    end
+
+    %% Global Connections
+    User --> PIG_Sub
+    PIG_Sub -->|clean| TS_Sub
+    PIG_Sub -->|injection| Block_Node(["🚫 Block + log"])
+    TS_Sub --> LOOP_Sub
+    LOOP_Sub --> OBS_Sub
+    
+    MS_Reason --> RAG_Sub
+    Conf_Gate -->|low score| UG_Gate
+    Conf_Gate -->|confident| LOOP_Sub
+    
+    State_DB -->|Resume| Tools_Node["🛠️ Exec Approved Action"]
+    TC_Gate -->|write| AG_Gate
+    TC_Gate -->|read| Tools_Node
+    
+    Tools_Node -->|Result Fed Back| MS_Reason
+    OBS_Sub --> Done_Node(["📄 Final response"])
+
+    %% Styling
+    classDef container fill:#fff4dd,stroke:#d4a017,stroke-width:2px;
+    classDef fallback fill:#ffebee,stroke:#c62828,stroke-width:1px;
+    class PIG_Sub,TS_Sub,RAG_Sub,HITL_Sub,LOOP_Sub,OBS_Sub,KFP_Sub container;
+    class FB_1 fallback;
                     </pre>
                 </div>
 
-                <h2>Why start as one Python app</h2>
+                <h2>Keeping it monolithic is a feature, not a shortcut</h2>
                 <p>I think this is the right first decision. The PRD describes eventual microservices, but the code stays monolithic for now. That looks like a compromise until you remember what we are trying to learn first: does the control flow make sense, do the approval gates feel sane, and do the boundaries hold when the agent starts calling tools?</p>
+
+                <p>The session scoping code is a good example of this. It captures a production-shaped idea without pretending the production dependencies already exist.</p>
+
+                <pre class="series-code"><code>ROLE_PERMISSIONS: dict[str, set[str]] = {
+    "analyst": {"search_knowledge_base", "get_ticket_status"},
+    "supervisor": {"search_knowledge_base", "get_ticket_status",
+                   "create_ticket", "escalate_to_manager"},
+}
+
+if session_allowlist is not None:
+    self.allowed_tools = role_allowed &amp; session_allowlist
+else:
+    self.allowed_tools = role_allowed</code></pre>
+
+                <p>This is not fancy, but it is the right kind of prototype simplification. The code already models two permission layers: the role boundary and the session boundary. Later you can replace the hardcoded maps with JWT-derived entitlements or a policy service without rewriting the rest of the graph.</p>
 
                 <div class="series-card-grid">
                     <div class="series-card">
@@ -129,20 +231,39 @@ flowchart TD
                     </div>
                 </div>
 
-                <h2>Where the prototype is honest and where it is aspirational</h2>
+                <h2>The prototype is useful because it is honest about what is fake</h2>
                 <p>The good news is that the code mostly matches the spirit of the PRD. The less good news is that several enterprise pieces are still placeholders. Identity is hardcoded by role instead of coming from Okta or Azure AD. The audit log is SQLite, not Postgres with row-level security. The knowledge refresh pipeline is a static in-memory ingest, not a scheduled versioned pipeline.</p>
+
+                <pre class="series-code"><code>KB_ARTICLES = [
+    {
+        "id": "kb-005",
+        "title": "Laptop hardware failure and urgent repair",
+        "content": "... critical hardware tickets within 1 hour."
+    },
+    ...
+]
+
+collection.add(documents=docs, embeddings=embeddings,
+               metadatas=metas, ids=ids)</code></pre>
+
+                <p>That snippet is exactly why I would call this a prototype and not a half-built platform. The repo is honest about where the KB comes from today. It is a curated in-memory corpus used to exercise the retrieval loop, not a real ingestion pipeline pretending to be production-ready.</p>
 
                 <div class="series-note">
                     <p><strong>The gap is not a problem by itself.</strong> A prototype is supposed to simplify. The important question is whether the simplification preserves the shape of the real system. In this repo, it mostly does. That is why it is a solid base for a blog series.</p>
                 </div>
 
-                <h2>What I would tighten before calling the architecture production-ready</h2>
+                <h2>What still has to get harder before this deserves production status</h2>
                 <ul>
                     <li>Move identity, tool entitlements, and audit storage out of local process memory.</li>
                     <li>Turn the knowledge base ingest into a scheduled pipeline with document versioning and rollback.</li>
                     <li>Separate the approval workflow from the agent runtime so a human review does not depend on a terminal prompt.</li>
                     <li>Expand fallback handling to cover more classes of provider and infrastructure failures.</li>
                 </ul>
+
+                <h2>What I would not ship from this prototype</h2>
+                <p>I would not ship per-session KB ingestion, local-only role derivation, or a terminal-driven approval path. Those are reasonable prototype choices because they expose the architecture cleanly, but they become liabilities as soon as more than one user or one operator is involved.</p>
+
+                <p>I also would not ship the current boundary between “prototype control” and “production control” without making it explicit in docs. The code is good at modeling the eventual system shape, but a team can still fool itself if it treats these local implementations as merely temporary plumbing rather than design constraints that need real replacements.</p>
 
                 <p>That sets up the rest of the series. In the next post, I’ll walk through the request lifecycle in code, starting from <code>run_session()</code> and ending at the LangGraph routing decisions that make the whole app feel like an agent instead of a scripted assistant.</p>
 

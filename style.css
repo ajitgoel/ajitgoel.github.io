@@ -312,6 +312,7 @@ section {
 .series-post-content pre,
 .series-post-content .series-card-grid,
 .series-post-content .series-note,
+.series-post-content .series-table,
 .series-post-content .mermaid-container,
 .series-post-content .series-nav {
   margin-bottom: 1.75rem;
@@ -403,6 +404,36 @@ section {
   line-height: 1.6;
 }
 
+.series-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.series-table th,
+.series-table td {
+  padding: 1rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.series-table th {
+  color: var(--text-primary);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.series-table td {
+  color: var(--text-secondary);
+}
+
+.series-table tr:last-child td {
+  border-bottom: 0;
+}
+
 .series-inline-list {
   display: flex;
   flex-wrap: wrap;
@@ -419,6 +450,11 @@ section {
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+a.series-pill:hover {
+  border-color: var(--accent-color);
+  color: var(--text-primary);
 }
 
 .series-nav {
