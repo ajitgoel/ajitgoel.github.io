@@ -267,9 +267,17 @@ collection.add(documents=docs, embeddings=embeddings,
                 <p>I also would not ship the current boundary between “prototype control” and “production control” without making it explicit in docs. The code is good at modeling the eventual system shape, but a team can still fool itself if it treats these local implementations as merely temporary plumbing rather than design constraints that need real replacements.</p>
 
                 <p>That sets up the rest of the series. In the next post, I’ll walk through the request lifecycle in code, starting from <code>run_session()</code> and ending at the LangGraph routing decisions that make the whole app feel like an agent instead of a scripted assistant.</p>
-
+                
                 <div class="series-nav">
-                    <a href="helpdesk-agent-series-2-request-lifecycle.html">Next: Part 2, how a request moves through the system</a>
+                    <a href="helpdesk-agent-series-2-request-lifecycle.html">
+                        <span class="series-eyebrow">Next Up</span>
+                        <h4 style="color: var(--text-primary); margin: 0;">Part 2: The Agent Loop Is a State Machine</h4>
+                    </a>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <a href="helpdesk-agent-series-3-rag-and-knowledge-pipeline.html" style="font-size: 0.9rem;">Part 3: Retrieval Path</a>
+                        <a href="helpdesk-agent-series-4-guardrails-and-tool-scoping.html" style="font-size: 0.9rem;">Part 4: Tool Scoping</a>
+                        <a href="helpdesk-agent-series-5-hitl-observability-and-production-path.html" style="font-size: 0.9rem;">Part 5: Production Path</a>
+                    </div>
                 </div>
             </div>
         </article>
