@@ -17,6 +17,7 @@ export default defineConfig({
         blog_event_driven_interview: resolve(__dirname, 'event-driven-architecture-message-brokers-interview-walkthrough.html'),
         blog_protobuf: resolve(__dirname, 'use-protobuf-net-to-improve-serialization-performance.html'),
         blog_sql_perf: resolve(__dirname, 'improving-sql-performance-encrypted-columns.html'),
+        blog_codex_deepseek_ccswitch: resolve(__dirname, 'codex-deepseek-cc-switch-local-routing.html'),
       },
     },
   },
