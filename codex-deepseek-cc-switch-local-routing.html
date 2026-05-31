@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using DeepSeek with Codex through CC Switch | Ajit Goel</title>
+    <meta name="description" content="A short, practical guide to routing Codex requests to DeepSeek V4 Pro through CC Switch local routing.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+
+  <script type="module" crossorigin src="/assets/main-BOcHviRN.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/style-CSoXT61-.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">AG.</a>
+                <ul class="nav-links">
+                    <li><a href="/#about">About</a></li>
+                    <li><a href="/#experience">Experience</a></li>
+                    <li><a href="/#blog">Blog</a></li>
+                    <li><a href="resume.html">Resume</a></li>
+                    <li><a href="contact.html" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="series-post-container">
+        <a href="/#blog" class="back-link">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Back to Insights
+        </a>
+
+        <article>
+            <header class="series-post-header reveal">
+                <span class="series-eyebrow">AI Tooling</span>
+                <h1 class="series-post-title">I routed Codex to DeepSeek with CC Switch</h1>
+                <div class="series-post-meta">
+                    <span>May 31, 2026</span>
+                    <span>•</span>
+                    <span>5 min read</span>
+                    <span>•</span>
+                    <span>Local Routing</span>
+                </div>
+            </header>
+
+            <div class="series-post-content reveal">
+                <p class="series-lead">I wanted Codex to use DeepSeek V4 Pro without turning every request into a manual copy-paste exercise. CC Switch made that possible by sitting in the middle, translating requests, and keeping the vendor setup in one place.</p>
+
+                <p>The original CC Switch write-up I read was aimed at Claude Desktop. The same idea applies cleanly to Codex: point Codex at the local router, map the model you want, and let CC Switch forward the request to DeepSeek.</p>
+
+                <h2>The problem is model routing, not the API key</h2>
+                <p>Adding a DeepSeek key is the easy part. The part that usually breaks is the shape of the request and the model name expected by the client.</p>
+
+                <p>CC Switch handles three boring but important jobs:</p>
+
+                <ul>
+                    <li>It translates the client request into the vendor's API format.</li>
+                    <li>It maps the model shown in the client to the actual model ID sent to the vendor.</li>
+                    <li>It keeps a local routing service running so the client has one stable endpoint.</li>
+                </ul>
+
+                <p>That last part matters. If the model is not one the client already knows how to talk to, the local router has to stay on while you use it.</p>
+
+                <h2>My CC Switch setup for Codex and DeepSeek</h2>
+                <p>I started from the CC Switch provider list, selected Codex in the app switcher, and edited the DeepSeek provider. In my case DeepSeek is marked as needing routing, which is exactly what I wanted.</p>
+
+                <figure class="series-figure">
+                    <img src="/assets/codex-deepseek-provider-list-JqnD1t6v.png" alt="CC Switch provider list with Codex selected and DeepSeek marked as needing routing">
+                    <figcaption>Codex is selected at the top, and DeepSeek is the provider CC Switch will route through.</figcaption>
+                </figure>
+
+                <p>The provider configuration is intentionally small. I used the DeepSeek platform URL, pasted the API key, and let CC Switch keep the key masked after saving.</p>
+
+                <figure class="series-figure">
+                    <img src="/assets/codex-deepseek-provider-key-DLfDhckC.png" alt="CC Switch DeepSeek provider edit screen with platform URL and a masked API key">
+                    <figcaption>The key is stored in the provider config. The screenshot only shows the masked value.</figcaption>
+                </figure>
+
+                <p>The important fields for the DeepSeek path are:</p>
+
+                <pre class="series-code"><code>Provider: DeepSeek
+Website: https://platform.deepseek.com
+API format: Anthropic Messages compatible
+Model: DeepSeek V4 Pro
+Routing: enabled for Codex</code></pre>
+
+                <h2>Local routing has to be running</h2>
+                <p>This was the step I would expect people to miss. In CC Switch settings, the Routing tab has a master switch and per-app routing toggles. For Codex, both need to be on.</p>
+
+                <figure class="series-figure">
+                    <img src="/assets/codex-deepseek-routing-settings-C2JK7eD8.png" alt="CC Switch routing settings with the routing master switch running and Codex enabled">
+                    <figcaption>The local router is running at <code>127.0.0.1:15721</code>, with routing enabled for Codex.</figcaption>
+                </figure>
+
+                <p>The PDF guide called out the same rule for Claude Desktop: if you use a non-native model through mapping, keep the local router alive. For Codex, the idea is the same. If CC Switch is closed or routing is turned off, the client loses the path to DeepSeek.</p>
+
+                <h2>Codex can now pick DeepSeek like a normal model</h2>
+                <p>Once routing was on, Codex showed DeepSeek as the active provider and let me pick between DeepSeek V4 Flash and DeepSeek V4 Pro. I used Pro for the heavier reasoning work.</p>
+
+                <figure class="series-figure">
+                    <img src="/assets/codex-deepseek-model-menu-D9IPxrQ6.png" alt="Codex model menu showing DeepSeek V4 Flash and DeepSeek V4 Pro options">
+                    <figcaption>Codex is still the client. CC Switch is doing the provider routing underneath it.</figcaption>
+                </figure>
+
+                <h2>What I would check first when it fails</h2>
+                <p>Most failures in this setup are not mysterious. I would check these before touching anything else:</p>
+
+                <ol>
+                    <li>Is the DeepSeek API key saved in CC Switch?</li>
+                    <li>Is the Routing master switch running?</li>
+                    <li>Is Codex enabled under Routing?</li>
+                    <li>Is DeepSeek selected as the active provider for Codex?</li>
+                    <li>Did you pick the expected model in the Codex model menu?</li>
+                </ol>
+
+                <p>The trade-off is simple: this is not a direct Codex-to-DeepSeek connection. CC Switch becomes part of the local path. I am fine with that because it gives me a single place to swap providers, inspect routing, and avoid hand-editing client config every time I want to try a different model.</p>
+
+                <p>For my day-to-day use, that is the whole win. Codex stays where I work, DeepSeek handles the model call, and CC Switch quietly does the translation work in the middle.</p>
+            </div>
+        </article>
+    </main>
+
+    <footer style="padding: 50px 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-secondary);">
+        <div class="container">
+            <p>&copy; 2026 Ajit Goel. Built with passion and Vanilla JS.</p>
+        </div>
+    </footer>
+
+</body>
+</html>
